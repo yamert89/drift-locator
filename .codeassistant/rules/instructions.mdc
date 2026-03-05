@@ -1,0 +1,7 @@
+---
+name: instructions
+---
+
+- All commands must be run only in the root directory or subdirectory of the project.
+- For temp files use .agent/temp
+
