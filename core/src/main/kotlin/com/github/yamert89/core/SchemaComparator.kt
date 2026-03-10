@@ -6,6 +6,8 @@ package com.github.yamert89.core
 interface DatabaseObject {
     val name: String
     val type: String
+    val children: List<DatabaseObject>
+        get() = emptyList()
 }
 
 /**

@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.yamert89.drift-locator</id>
     <name>Drift Locator</name>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>0.1.0</version>
     <vendor email="yamert89@github.com" url="https://github.com/yamert89">yamert89</vendor>
 
     <description><![CDATA[
@@ -17,6 +17,16 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <applicationService serviceImplementation="com.github.yamert89.plugin.DriftLocatorApplicationService"/>
+        <toolWindow id="DriftLocator" anchor="bottom" factoryClass="com.github.yamert89.plugin.DriftLocatorToolWindowFactory"/>
     </extensions>
+
+    <actions>
+        <group id="DriftLocatorGroup" text="Drift Locator" description="Drift locator actions">
+            <add-to-group group-id="MainMenu" anchor="last"/>
+            <action id="DriftLocatorAction" class="com.github.yamert89.plugin.DriftLocatorAction" text="Compare Schemas" description="Compare database schemas"/>
+        </group>
+        <action id="com.github.yamert89.plugin.AddConnectionAction"
+                class="com.github.yamert89.plugin.AddConnectionAction" text="Add Connection"
+                description="Add connection"/>
+    </actions>
 </idea-plugin>
