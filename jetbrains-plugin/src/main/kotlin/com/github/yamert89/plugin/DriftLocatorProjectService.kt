@@ -14,11 +14,10 @@ class DriftLocatorProjectService(private val project: Project) {
         val name: String,
         val url: String,
         val username: String,
-        val password: String
+        val password: String,
     )
 
     companion object {
-        fun getInstance(project: Project): DriftLocatorProjectService =
-            project.service<DriftLocatorProjectService>()
+        fun getInstance(project: Project): DriftLocatorProjectService = project.service<DriftLocatorProjectService>()
     }
 }

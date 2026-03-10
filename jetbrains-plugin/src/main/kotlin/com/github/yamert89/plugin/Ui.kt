@@ -25,21 +25,22 @@ class DriftLocatorAction : AnAction() {
         }
     }
 
-    private fun performComparison(project: Project, service: DriftLocatorProjectService, dialog: SchemaComparisonDialog) {
+    private fun performComparison(
+        project: Project,
+        service: DriftLocatorProjectService,
+        dialog: SchemaComparisonDialog,
+    ) {
         // TODO: Implement actual comparison using core module
         Messages.showMessageDialog(
             project,
             "Schema comparison would be performed here",
             "Comparison Result",
-            Messages.getInformationIcon()
+            Messages.getInformationIcon(),
         )
     }
 }
 
-class SchemaComparisonDialog(
-    private val project: Project,
-    private val service: DriftLocatorProjectService
-) : DialogWrapper(project) {
+class SchemaComparisonDialog(private val project: Project, private val service: DriftLocatorProjectService) : DialogWrapper(project) {
     private val connectionComboBox = JComboBox<String>()
     private val schema1Field = JBTextField()
     private val schema2Field = JBTextField()
@@ -57,22 +58,26 @@ class SchemaComparisonDialog(
 
     override fun createCenterPanel(): JComponent {
         val panel = JPanel(GridBagLayout())
-        val gbc = java.awt.GridBagConstraints().apply {
-            fill = java.awt.GridBagConstraints.HORIZONTAL
-            insets.set(5, 5, 5, 5)
-        }
+        val gbc =
+            java.awt.GridBagConstraints().apply {
+                fill = java.awt.GridBagConstraints.HORIZONTAL
+                insets.set(5, 5, 5, 5)
+            }
 
-        gbc.gridx = 0; gbc.gridy = 0
+        gbc.gridx = 0
+        gbc.gridy = 0
         panel.add(JLabel("Connection:"), gbc)
         gbc.gridx = 1
         panel.add(connectionComboBox, gbc)
 
-        gbc.gridx = 0; gbc.gridy = 1
+        gbc.gridx = 0
+        gbc.gridy = 1
         panel.add(JLabel("Schema 1:"), gbc)
         gbc.gridx = 1
         panel.add(schema1Field, gbc)
 
-        gbc.gridx = 0; gbc.gridy = 2
+        gbc.gridx = 0
+        gbc.gridy = 2
         panel.add(JLabel("Schema 2:"), gbc)
         gbc.gridx = 1
         panel.add(schema2Field, gbc)
@@ -93,7 +98,9 @@ class SchemaComparisonDialog(
     }
 
     fun getSelectedConnection(): String? = connectionComboBox.selectedItem as String?
+
     fun getSchema1(): String = schema1Field.text
+
     fun getSchema2(): String = schema2Field.text
 
     fun setSelectedConnection(connection: String) {
@@ -124,7 +131,7 @@ class AddConnectionAction : AnAction() {
                     dialog.getConnectionName(),
                     dialog.getUrl(),
                     dialog.getUsername(),
-                    dialog.getPassword()
+                    dialog.getPassword(),
                 )
         }
     }
@@ -143,27 +150,32 @@ class AddConnectionDialog(private val project: Project) : DialogWrapper(project)
 
     override fun createCenterPanel(): JComponent {
         val panel = JPanel(GridBagLayout())
-        val gbc = java.awt.GridBagConstraints().apply {
-            fill = java.awt.GridBagConstraints.HORIZONTAL
-            insets.set(5, 5, 5, 5)
-        }
+        val gbc =
+            java.awt.GridBagConstraints().apply {
+                fill = java.awt.GridBagConstraints.HORIZONTAL
+                insets.set(5, 5, 5, 5)
+            }
 
-        gbc.gridx = 0; gbc.gridy = 0
+        gbc.gridx = 0
+        gbc.gridy = 0
         panel.add(JLabel("Connection Name:"), gbc)
         gbc.gridx = 1
         panel.add(nameField, gbc)
 
-        gbc.gridx = 0; gbc.gridy = 1
+        gbc.gridx = 0
+        gbc.gridy = 1
         panel.add(JLabel("JDBC URL:"), gbc)
         gbc.gridx = 1
         panel.add(urlField, gbc)
 
-        gbc.gridx = 0; gbc.gridy = 2
+        gbc.gridx = 0
+        gbc.gridy = 2
         panel.add(JLabel("Username:"), gbc)
         gbc.gridx = 1
         panel.add(usernameField, gbc)
 
-        gbc.gridx = 0; gbc.gridy = 3
+        gbc.gridx = 0
+        gbc.gridy = 3
         panel.add(JLabel("Password:"), gbc)
         gbc.gridx = 1
         panel.add(passwordField, gbc)
@@ -172,8 +184,10 @@ class AddConnectionDialog(private val project: Project) : DialogWrapper(project)
     }
 
     fun getConnectionName(): String = nameField.text
+
     fun getUrl(): String = urlField.text
+
     fun getUsername(): String = usernameField.text
+
     fun getPassword(): String = String(passwordField.password)
 }
-

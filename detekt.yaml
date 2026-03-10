@@ -1,0 +1,120 @@
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+processors:
+  active: true
+
+console-reports:
+  active: true
+
+style:
+  MagicNumber:
+    active: true
+    excludes: ['**/internal/**', '**/ui/**', '**/test/**', '**/data/**']
+    ignoreNumbers: ['-1', '0', '1', '2', '3', '4', '5', '8000', '200']
+  UnusedImports:
+    active: true
+  UseCheckOrError:
+    active: true
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+    excludePackageStatements: true
+    excludeImportStatements: true
+    excludeCommentStatements: false
+    excludeRawStrings: true
+  UnusedPrivateMember:
+    active: true
+    allowedNames: 'excludeFromIndexing'
+  ReturnCount:
+    active: true
+    max: 3
+    excludedFunctions:
+      - 'equals'
+    excludeLabeled: false
+    excludeReturnFromLambda: true
+    excludeGuardClauses: false
+  ThrowsCount:
+    active: true
+    max: 2
+    excludeGuardClauses: false
+  WildcardImport:
+    active: false
+
+naming:
+  ClassNaming:
+    active: true
+    excludes: ['**/test/**']
+  FunctionNaming:
+    active: true
+  VariableNaming:
+    active: true
+
+complexity:
+  LongMethod:
+    active: true
+    threshold: 110 # default 30
+  LargeClass:
+    active: true
+    threshold: 600
+  NestedBlockDepth:
+    active: true
+    threshold: 4
+  LongParameterList:
+    active: true
+    functionThreshold: 6
+    constructorThreshold: 12 # default 7
+    ignoreDefaultParameters: false
+    ignoreDataClasses: true
+    ignoreAnnotatedParameter: [ ]
+  TooManyFunctions:
+    active: true
+    excludes: ['**/test/**']
+    thresholdInFiles: 25 # default 18
+    thresholdInClasses: 25 # default 18
+    thresholdInInterfaces: 25
+    thresholdInObjects: 20
+    thresholdInEnums: 11
+    ignoreDeprecated: false
+    ignorePrivate: false
+    ignoreOverridden: false
+    ignoreAnnotatedFunctions: [ ]
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 15
+    ignoreSingleWhenExpression: false
+    ignoreSimpleWhenEntries: true # default false
+    ignoreNestingFunctions: false
+    nestingFunctions:
+      - 'also'
+      - 'apply'
+      - 'forEach'
+      - 'isNotNull'
+      - 'ifNull'
+      - 'let'
+      - 'run'
+      - 'use'
+      - 'with'
+      - 'if'
+
+empty-blocks:
+  EmptyCatchBlock:
+    active: true
+  EmptyFunctionBlock:
+    active: false
+
+performance:
+  ForEachOnRange:
+    active: true
+  SpreadOperator:
+    active: true
+    excludes: [ '**/FlowixService.kt', '**/FlowixToolWindowFactory.kt', '**/MockDialog.kt' ]
+exceptions:
+  TooGenericExceptionCaught:
+    active: true
+    excludes: [ '**/test/**']

@@ -1,5 +1,7 @@
 plugins {
     kotlin("jvm") version "2.3.10" apply false
+    id("io.gitlab.arturbosch.detekt") version "1.23.8" apply false
+    id("org.jlleitschuh.gradle.ktlint") version "12.1.0" apply false
     java
 }
 
@@ -14,6 +16,8 @@ allprojects {
 
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "io.gitlab.arturbosch.detekt")
+    apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
     dependencies {
         implementation(kotlin("stdlib"))

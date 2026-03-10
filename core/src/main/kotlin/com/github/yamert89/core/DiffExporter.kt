@@ -7,7 +7,6 @@ import java.nio.file.Path
  * Exports schema differences to a human-readable text file.
  */
 object DiffExporter {
-
     /**
      * Converts a [SchemaDiff] to a multi-line string representation.
      */
@@ -49,7 +48,11 @@ object DiffExporter {
         return sb.toString()
     }
 
-    private fun appendObject(sb: StringBuilder, obj: DatabaseObject, indent: Int) {
+    private fun appendObject(
+        sb: StringBuilder,
+        obj: DatabaseObject,
+        indent: Int,
+    ) {
         val indentStr = " ".repeat(indent)
         sb.appendLine("$indentStr- ${obj.type}: ${obj.name}")
         obj.children.forEach { child: DatabaseObject ->
@@ -57,7 +60,11 @@ object DiffExporter {
         }
     }
 
-    private fun appendObjectDetails(sb: StringBuilder, obj: DatabaseObject, indent: Int) {
+    private fun appendObjectDetails(
+        sb: StringBuilder,
+        obj: DatabaseObject,
+        indent: Int,
+    ) {
         val indentStr = " ".repeat(indent)
         sb.appendLine("${indentStr}type: ${obj.type}")
         sb.appendLine("${indentStr}name: ${obj.name}")

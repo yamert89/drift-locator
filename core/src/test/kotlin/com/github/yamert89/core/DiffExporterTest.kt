@@ -6,7 +6,6 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 
 internal class DiffExporterTest {
-
     @TempDir
     lateinit var tempDir: Path
 
@@ -14,7 +13,7 @@ internal class DiffExporterTest {
     data class MockObject(
         override val name: String,
         override val type: String,
-        override val children: List<DatabaseObject> = emptyList()
+        override val children: List<DatabaseObject> = emptyList(),
     ) : DatabaseObject
 
     @Test
@@ -29,12 +28,17 @@ internal class DiffExporterTest {
 
     @Test
     fun `toText with added objects`() {
-        val added = listOf(
-            MockObject("table1", "TABLE"),
-            MockObject("table2", "TABLE", listOf(
-                MockObject("col1", "COLUMN")
-            ))
-        )
+        val added =
+            listOf(
+                MockObject("table1", "TABLE"),
+                MockObject(
+                    "table2",
+                    "TABLE",
+                    listOf(
+                        MockObject("col1", "COLUMN"),
+                    ),
+                ),
+            )
         val diff = SchemaDiff(added, emptyList(), emptyList())
         val text = DiffExporter.toText(diff)
         assertTrue(text.contains("table1"))
@@ -53,9 +57,14 @@ internal class DiffExporterTest {
     @Test
     fun `toText with modified objects`() {
         val oldObj = MockObject("func1", "FUNCTION")
-        val newObj = MockObject("func1", "FUNCTION", listOf(
-            MockObject("param", "PARAMETER")
-        ))
+        val newObj =
+            MockObject(
+                "func1",
+                "FUNCTION",
+                listOf(
+                    MockObject("param", "PARAMETER"),
+                ),
+            )
         val diff = SchemaDiff(emptyList(), emptyList(), listOf(oldObj to newObj))
         val text = DiffExporter.toText(diff)
         assertTrue(text.contains("func1"))

@@ -50,7 +50,7 @@ class DriftLocatorToolWindowPanel(private val project: Project) : JPanel(BorderL
                         dialog.getConnectionName(),
                         dialog.getUrl(),
                         dialog.getUsername(),
-                        dialog.getPassword()
+                        dialog.getPassword(),
                     )
                 updateConnectionList()
             }
@@ -62,7 +62,12 @@ class DriftLocatorToolWindowPanel(private val project: Project) : JPanel(BorderL
                 selected.forEach { service.connections.remove(it) }
                 updateConnectionList()
             } else {
-                JOptionPane.showMessageDialog(this, "Please select at least one connection to delete", "No Selection", JOptionPane.WARNING_MESSAGE)
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Please select at least one connection to delete",
+                    "No Selection",
+                    JOptionPane.WARNING_MESSAGE,
+                )
             }
         }
 
@@ -76,7 +81,12 @@ class DriftLocatorToolWindowPanel(private val project: Project) : JPanel(BorderL
                     // TODO: implement comparison logic
                 }
             } else {
-                JOptionPane.showMessageDialog(this, "Please select at least one connection to compare", "Selection Error", JOptionPane.ERROR_MESSAGE)
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Please select at least one connection to compare",
+                    "Selection Error",
+                    JOptionPane.ERROR_MESSAGE,
+                )
             }
         }
 
@@ -101,5 +111,4 @@ class DriftLocatorToolWindowPanel(private val project: Project) : JPanel(BorderL
         listModel.clear()
         service.connections.keys.forEach { listModel.addElement(it) }
     }
-
 }

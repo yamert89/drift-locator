@@ -39,7 +39,6 @@ dependencies {
     }
 }
 
-
 intellijPlatform {
     pluginConfiguration {
         version = providers.gradleProperty("pluginVersion")
@@ -110,5 +109,28 @@ tasks {
         sinceBuild.set(providers.gradleProperty("pluginSinceBuild"))
         untilBuild.set(providers.gradleProperty("pluginUntilBuild"))
         pluginVersion.set(providers.gradleProperty("pluginVersion"))
+    }
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    autoCorrect = true
+    //config.setFrom(files("$rootDir/detekt.yaml"))
+    ignoreFailures = true
+    //source.setFrom("src/main/kotlin", "src/compat/kotlin")
+}
+
+ktlint {
+    version.set("1.7.1")
+    outputToConsole.set(true)
+    ignoreFailures.set(false)
+    enableExperimentalRules.set(false)
+    disabledRules.set(setOf("experimental:ktlint-gradle-script"))
+    //outputColorName.set("RED")
+    filter {
+        include("**/kotlin/**")
+        exclude { tree ->
+            tree.file.path.contains("build.gradle.kts")
+        }
     }
 }

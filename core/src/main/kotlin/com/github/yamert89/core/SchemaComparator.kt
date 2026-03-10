@@ -28,5 +28,5 @@ interface SchemaComparator {
 data class SchemaDiff(
     val added: List<DatabaseObject>,
     val removed: List<DatabaseObject>,
-    val modified: List<Pair<DatabaseObject, DatabaseObject>>
+    val modified: List<Pair<DatabaseObject, DatabaseObject>>,
 )

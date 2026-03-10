@@ -12,22 +12,23 @@ import java.sql.DriverManager
 
 @Testcontainers
 class PostgresSchemaComparatorTest {
-
     companion object {
         @Container
-        val postgres = PostgreSQLContainer("postgres:15")
-            .withDatabaseName("testdb")
-            .withUsername("test")
-            .withPassword("test")
+        val postgres =
+            PostgreSQLContainer("postgres:15")
+                .withDatabaseName("testdb")
+                .withUsername("test")
+                .withPassword("test")
     }
 
     @Test
     fun `fetch schema should return empty when no objects`() {
-        val connection = DriverManager.getConnection(
-            postgres.jdbcUrl,
-            postgres.username,
-            postgres.password
-        )
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
         val schema = PostgresSchemaComparator.fetchSchema(connection)
         assertTrue(schema.objects.isEmpty())
         connection.close()
@@ -35,17 +36,20 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include created table`() {
-        val connection = DriverManager.getConnection(
-            postgres.jdbcUrl,
-            postgres.username,
-            postgres.password
-        )
-        connection.createStatement().execute("""
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
             CREATE TABLE test_table (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(100) NOT NULL
             )
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val schema = PostgresSchemaComparator.fetchSchema(connection)
         val tables = schema.objects.filter { it.type == "TABLE" }
@@ -71,16 +75,19 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `compare identical schemas should have no differences`() {
-        val connection = DriverManager.getConnection(
-            postgres.jdbcUrl,
-            postgres.username,
-            postgres.password
-        )
-        connection.createStatement().execute("""
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
             CREATE TABLE test_table (
                 id SERIAL PRIMARY KEY
             )
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val schema = PostgresSchemaComparator.fetchSchema(connection)
         val comparator = PostgresSchemaComparator(connection)
@@ -93,18 +100,21 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `compare different schemas should detect added table`() {
-        val connection = DriverManager.getConnection(
-            postgres.jdbcUrl,
-            postgres.username,
-            postgres.password
-        )
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
         // Source schema empty
         val source = PostgresSchemaComparator.fetchSchema(connection)
 
         // Create a table
-        connection.createStatement().execute("""
+        connection.createStatement().execute(
+            """
             CREATE TABLE added_table (id INT)
-        """.trimIndent())
+            """.trimIndent(),
+        )
         val target = PostgresSchemaComparator.fetchSchema(connection)
 
         val comparator = PostgresSchemaComparator(connection)
@@ -118,15 +128,18 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `compare different schemas should detect removed table`() {
-        val connection = DriverManager.getConnection(
-            postgres.jdbcUrl,
-            postgres.username,
-            postgres.password
-        )
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
         // Create a table
-        connection.createStatement().execute("""
+        connection.createStatement().execute(
+            """
             CREATE TABLE removed_table (id INT)
-        """.trimIndent())
+            """.trimIndent(),
+        )
         val source = PostgresSchemaComparator.fetchSchema(connection)
 
         // Drop table
@@ -144,21 +157,26 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `compare different schemas should detect modified table`() {
-        val connection = DriverManager.getConnection(
-            postgres.jdbcUrl,
-            postgres.username,
-            postgres.password
-        )
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
         // Create table with one column
-        connection.createStatement().execute("""
+        connection.createStatement().execute(
+            """
             CREATE TABLE modified_table (id INT)
-        """.trimIndent())
+            """.trimIndent(),
+        )
         val source = PostgresSchemaComparator.fetchSchema(connection)
 
         // Add a column
-        connection.createStatement().execute("""
+        connection.createStatement().execute(
+            """
             ALTER TABLE modified_table ADD COLUMN name VARCHAR(100)
-        """.trimIndent())
+            """.trimIndent(),
+        )
         val target = PostgresSchemaComparator.fetchSchema(connection)
 
         val comparator = PostgresSchemaComparator(connection)
@@ -178,11 +196,12 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `export diff to file`() {
-        val connection = DriverManager.getConnection(
-            postgres.jdbcUrl,
-            postgres.username,
-            postgres.password
-        )
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
         // Create two different schemas
         connection.createStatement().execute("CREATE TABLE table1 (id INT)")
         val source = PostgresSchemaComparator.fetchSchema(connection)

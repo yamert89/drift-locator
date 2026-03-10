@@ -6,7 +6,6 @@ import com.intellij.openapi.diagnostic.Logger
 
 @Service
 class DriftLocatorApplicationService {
-
     private val log = Logger.getInstance(DriftLocatorApplicationService::class.java)
 
     init {
