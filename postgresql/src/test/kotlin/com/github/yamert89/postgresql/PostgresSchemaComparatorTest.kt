@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
@@ -19,6 +20,24 @@ class PostgresSchemaComparatorTest {
                 .withDatabaseName("testdb")
                 .withUsername("test")
                 .withPassword("test")
+    }
+
+    @BeforeEach
+    fun cleanDatabase() {
+        val connection = DriverManager.getConnection(
+            postgres.jdbcUrl,
+            postgres.username,
+            postgres.password,
+        )
+        try {
+            val statement = connection.createStatement()
+            // Drop and recreate public schema to clean all objects
+            statement.execute("DROP SCHEMA IF EXISTS public CASCADE")
+            statement.execute("CREATE SCHEMA public")
+            statement.execute("GRANT ALL ON SCHEMA public TO ${postgres.username}")
+        } finally {
+            connection.close()
+        }
     }
 
     @Test
@@ -205,6 +224,8 @@ class PostgresSchemaComparatorTest {
         // Create two different schemas
         connection.createStatement().execute("CREATE TABLE table1 (id INT)")
         val source = PostgresSchemaComparator.fetchSchema(connection)
+        // Drop table1 to make it removed in target
+        connection.createStatement().execute("DROP TABLE table1")
         connection.createStatement().execute("CREATE TABLE table2 (name VARCHAR(100))")
         val target = PostgresSchemaComparator.fetchSchema(connection)
 
