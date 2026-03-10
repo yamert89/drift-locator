@@ -1,9 +1,0 @@
-[submodule "core"]
-	path = core
-	url = https://github.com/yamert89/drift-locator-core.git
-[submodule "postgresql"]
-	path = postgresql
-	url = https://github.com/yamert89/drift-locator-postgresql.git
-[submodule "jetbrains-plugin"]
-	path = jetbrains-plugin
-	url = https://github.com/yamert89/drift-locator-jetbrains-plugin.git
