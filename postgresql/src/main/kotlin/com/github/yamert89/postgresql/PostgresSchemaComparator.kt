@@ -10,7 +10,7 @@ import kotliquery.*
 /**
  * PostgreSQL schema comparator that fetches schema via JDBC.
  */
-class PostgresSchemaComparator(private val connection: Connection) : SchemaComparator {
+class PostgresSchemaComparator() : SchemaComparator {
     override fun compare(source: DatabaseSchema, target: DatabaseSchema): SchemaDiff {
         val sourceMap = source.objects.associateBy { it.name }
         val targetMap = target.objects.associateBy { it.name }
@@ -64,13 +64,7 @@ class PostgresSchemaComparator(private val connection: Connection) : SchemaCompa
             session.forEach(queryOf(columnQuery)) { row ->
                 val schema = row.string("table_schema")
                 val table = row.string("table_name")
-                val column = PostgresColumn(
-                    columnName = row.string("column_name"),
-                    dataType = row.string("data_type"),
-                    isNullable = row.string("is_nullable") == "YES",
-                    defaultValue = row.stringOrNull("column_default"),
-                    ordinalPosition = row.int("ordinal_position"),
-                )
+                val column = row.toPostgresColumn()
                 columnsByTable.getOrPut(schema to table) { mutableListOf() }.add(column)
             }
 
@@ -85,14 +79,7 @@ class PostgresSchemaComparator(private val connection: Connection) : SchemaCompa
             session.forEach(queryOf(indexQuery)) { row ->
                 val schema = row.string("schemaname")
                 val table = row.string("tablename")
-                val indexName = row.string("indexname")
-                val indexDef = row.string("indexdef")
-                val isUnique = indexDef.contains("UNIQUE", ignoreCase = true)
-                val index = PostgresIndex(
-                    indexName = indexName,
-                    indexDefinition = indexDef,
-                    isUnique = isUnique,
-                )
+                val index = row.toPostgresIndex()
                 indexesByTable.getOrPut(schema to table) { mutableListOf() }.add(index)
             }
 
@@ -113,21 +100,7 @@ class PostgresSchemaComparator(private val connection: Connection) : SchemaCompa
             session.forEach(queryOf(constraintQuery)) { row ->
                 val schema = row.string("table_schema")
                 val table = row.string("table_name")
-                val constraintName = row.string("constraint_name")
-                val constraintType = row.string("constraint_type")
-                val columns = row.stringOrNull("columns") ?: ""
-                val definition = when (constraintType) {
-                    "PRIMARY KEY" -> "PRIMARY KEY ($columns)"
-                    "FOREIGN KEY" -> "FOREIGN KEY ($columns) REFERENCES ..." // simplified
-                    "UNIQUE" -> "UNIQUE ($columns)"
-                    "CHECK" -> "CHECK (...)" // we could fetch check clause from pg_constraint
-                    else -> constraintType
-                }
-                val constraint = PostgresConstraint(
-                    constraintName = constraintName,
-                    constraintType = constraintType,
-                    definition = definition,
-                )
+                val constraint = row.toPostgresConstraint()
                 constraintsByTable.getOrPut(schema to table) { mutableListOf() }.add(constraint)
             }
 
@@ -178,13 +151,7 @@ class PostgresSchemaComparator(private val connection: Connection) : SchemaCompa
                 session.forEach(queryOf(columnQuery)) { row ->
                     val schema = row.string("table_schema")
                     val viewName = row.string("table_name")
-                    val column = PostgresColumn(
-                        columnName = row.string("column_name"),
-                        dataType = row.string("data_type"),
-                        isNullable = row.string("is_nullable") == "YES",
-                        defaultValue = row.stringOrNull("column_default"),
-                        ordinalPosition = row.int("ordinal_position"),
-                    )
+                    val column = row.toPostgresColumn()
                     columnsByView.getOrPut(schema to viewName) { mutableListOf() }.add(column)
                 }
             }
@@ -217,20 +184,7 @@ class PostgresSchemaComparator(private val connection: Connection) : SchemaCompa
                 AND p.prokind = 'f'  -- functions
                 """.trimIndent()
             session.forEach(queryOf(functionQuery)) { row ->
-                val schema = row.string("schema")
-                val functionName = row.string("function_name")
-                val returnType = row.string("return_type")
-                val arguments = row.string("arguments")
-                val language = row.string("language")
-                objects.add(
-                    PostgresFunction(
-                        schema = schema,
-                        objectName = functionName,
-                        returnType = returnType,
-                        arguments = arguments,
-                        language = language,
-                    ),
-                )
+                objects.add(row.toPostgresFunction())
             }
         }
 
@@ -248,18 +202,7 @@ class PostgresSchemaComparator(private val connection: Connection) : SchemaCompa
                 AND p.prokind = 'p'  -- procedures
                 """.trimIndent()
             session.forEach(queryOf(procedureQuery)) { row ->
-                val schema = row.string("schema")
-                val procedureName = row.string("procedure_name")
-                val arguments = row.string("arguments")
-                val language = row.string("language")
-                objects.add(
-                    PostgresProcedure(
-                        schema = schema,
-                        objectName = procedureName,
-                        arguments = arguments,
-                        language = language,
-                    ),
-                )
+                objects.add(row.toPostgresProcedure())
             }
         }
 
@@ -272,20 +215,7 @@ class PostgresSchemaComparator(private val connection: Connection) : SchemaCompa
                 WHERE sequence_schema NOT IN ('pg_catalog', 'information_schema')
                 """.trimIndent()
             session.forEach(queryOf(sequenceQuery)) { row ->
-                val schema = row.string("sequence_schema")
-                val sequenceName = row.string("sequence_name")
-                val dataType = row.string("data_type")
-                val startValue = row.long("start_value")
-                val increment = row.long("increment")
-                objects.add(
-                    PostgresSequence(
-                        schema = schema,
-                        objectName = sequenceName,
-                        dataType = dataType,
-                        startValue = startValue,
-                        increment = increment,
-                    ),
-                )
+                objects.add(row.toPostgresSequence())
             }
         }
     }

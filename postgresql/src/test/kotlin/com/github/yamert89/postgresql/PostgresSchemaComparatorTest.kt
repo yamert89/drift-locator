@@ -109,7 +109,7 @@ class PostgresSchemaComparatorTest {
         )
 
         val schema = PostgresSchemaComparator.fetchSchema(connection)
-        val comparator = PostgresSchemaComparator(connection)
+        val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(schema, schema)
         assertTrue(diff.added.isEmpty())
         assertTrue(diff.removed.isEmpty())
@@ -136,7 +136,7 @@ class PostgresSchemaComparatorTest {
         )
         val target = PostgresSchemaComparator.fetchSchema(connection)
 
-        val comparator = PostgresSchemaComparator(connection)
+        val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(source, target)
         assertEquals(1, diff.added.size)
         assertEquals("public.added_table", diff.added.first().name)
@@ -165,7 +165,7 @@ class PostgresSchemaComparatorTest {
         connection.createStatement().execute("DROP TABLE removed_table")
         val target = PostgresSchemaComparator.fetchSchema(connection)
 
-        val comparator = PostgresSchemaComparator(connection)
+        val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(source, target)
         assertEquals(1, diff.removed.size)
         assertEquals("public.removed_table", diff.removed.first().name)
@@ -198,7 +198,7 @@ class PostgresSchemaComparatorTest {
         )
         val target = PostgresSchemaComparator.fetchSchema(connection)
 
-        val comparator = PostgresSchemaComparator(connection)
+        val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(source, target)
         assertTrue(diff.added.isEmpty())
         assertTrue(diff.removed.isEmpty())
@@ -229,7 +229,7 @@ class PostgresSchemaComparatorTest {
         connection.createStatement().execute("CREATE TABLE table2 (name VARCHAR(100))")
         val target = PostgresSchemaComparator.fetchSchema(connection)
 
-        val comparator = PostgresSchemaComparator(connection)
+        val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(source, target)
 
         // Export to temporary file
