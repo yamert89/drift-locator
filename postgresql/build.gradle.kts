@@ -5,7 +5,7 @@ plugins {
 dependencies {
     implementation(project(":core"))
     implementation("org.postgresql:postgresql:42.7.10")
-
+    implementation("com.github.seratch:kotliquery:1.9.0")
     testImplementation(kotlin("test"))
     testImplementation("org.testcontainers:testcontainers:1.21.4")
     testImplementation("org.testcontainers:postgresql:1.21.4")
