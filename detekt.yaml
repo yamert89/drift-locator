@@ -58,7 +58,7 @@ naming:
 complexity:
   LongMethod:
     active: true
-    threshold: 110 # default 30
+    threshold: 65 # relaxed from 110 to 65 as requested
   LargeClass:
     active: true
     threshold: 600

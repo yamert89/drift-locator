@@ -24,11 +24,12 @@ class PostgresSchemaComparatorTest {
 
     @BeforeEach
     fun cleanDatabase() {
-        val connection = DriverManager.getConnection(
-            postgres.jdbcUrl,
-            postgres.username,
-            postgres.password,
-        )
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
         try {
             val statement = connection.createStatement()
             // Drop and recreate public schema to clean all objects

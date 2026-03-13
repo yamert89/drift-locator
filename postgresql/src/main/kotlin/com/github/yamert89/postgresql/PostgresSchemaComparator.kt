@@ -4,13 +4,15 @@ import com.github.yamert89.core.DatabaseObject
 import com.github.yamert89.core.DatabaseSchema
 import com.github.yamert89.core.SchemaComparator
 import com.github.yamert89.core.SchemaDiff
+import kotliquery.Session
+import kotliquery.queryOf
 import java.sql.Connection
-import kotliquery.*
+import kotliquery.Connection as KConnection
 
 /**
  * PostgreSQL schema comparator that fetches schema via JDBC.
  */
-class PostgresSchemaComparator() : SchemaComparator {
+class PostgresSchemaComparator : SchemaComparator {
     override fun compare(source: DatabaseSchema, target: DatabaseSchema): SchemaDiff {
         val sourceMap = source.objects.associateBy { it.name }
         val targetMap = target.objects.associateBy { it.name }
@@ -34,7 +36,7 @@ class PostgresSchemaComparator() : SchemaComparator {
          * Fetches schema from a PostgreSQL database.
          */
         fun fetchSchema(connection: Connection): DatabaseSchema {
-            val session = Session(Connection(connection))
+            val session = Session(KConnection(connection))
             val objects = mutableListOf<DatabaseObject>()
 
             // Fetch tables with columns, indexes, constraints
@@ -52,7 +54,29 @@ class PostgresSchemaComparator() : SchemaComparator {
         }
 
         private fun fetchTables(session: Session, objects: MutableList<DatabaseObject>) {
-            // Fetch columns
+            val columnsByTable = fetchColumns(session)
+            val indexesByTable = fetchIndexes(session)
+            val constraintsByTable = fetchConstraints(session)
+
+            // Create table objects
+            val allTables = (columnsByTable.keys + indexesByTable.keys + constraintsByTable.keys).toSet()
+            for ((schema, table) in allTables) {
+                val columns = columnsByTable[schema to table] ?: emptyList()
+                val indexes = indexesByTable[schema to table] ?: emptyList()
+                val constraints = constraintsByTable[schema to table] ?: emptyList()
+                objects.add(
+                    PostgresTable(
+                        schema = schema,
+                        objectName = table,
+                        columns = columns,
+                        indexes = indexes,
+                        constraints = constraints,
+                    ),
+                )
+            }
+        }
+
+        private fun fetchColumns(session: Session): Map<Pair<String, String>, List<PostgresColumn>> {
             val columnsByTable = mutableMapOf<Pair<String, String>, MutableList<PostgresColumn>>()
             val columnQuery =
                 """
@@ -67,8 +91,10 @@ class PostgresSchemaComparator() : SchemaComparator {
                 val column = row.toPostgresColumn()
                 columnsByTable.getOrPut(schema to table) { mutableListOf() }.add(column)
             }
+            return columnsByTable
+        }
 
-            // Fetch indexes
+        private fun fetchIndexes(session: Session): Map<Pair<String, String>, List<PostgresIndex>> {
             val indexesByTable = mutableMapOf<Pair<String, String>, MutableList<PostgresIndex>>()
             val indexQuery =
                 """
@@ -82,8 +108,10 @@ class PostgresSchemaComparator() : SchemaComparator {
                 val index = row.toPostgresIndex()
                 indexesByTable.getOrPut(schema to table) { mutableListOf() }.add(index)
             }
+            return indexesByTable
+        }
 
-            // Fetch constraints
+        private fun fetchConstraints(session: Session): Map<Pair<String, String>, List<PostgresConstraint>> {
             val constraintsByTable = mutableMapOf<Pair<String, String>, MutableList<PostgresConstraint>>()
             val constraintQuery =
                 """
@@ -103,23 +131,7 @@ class PostgresSchemaComparator() : SchemaComparator {
                 val constraint = row.toPostgresConstraint()
                 constraintsByTable.getOrPut(schema to table) { mutableListOf() }.add(constraint)
             }
-
-            // Create table objects
-            val allTables = (columnsByTable.keys + indexesByTable.keys + constraintsByTable.keys).toSet()
-            for ((schema, table) in allTables) {
-                val columns = columnsByTable[schema to table] ?: emptyList()
-                val indexes = indexesByTable[schema to table] ?: emptyList()
-                val constraints = constraintsByTable[schema to table] ?: emptyList()
-                objects.add(
-                    PostgresTable(
-                        schema = schema,
-                        objectName = table,
-                        columns = columns,
-                        indexes = indexes,
-                        constraints = constraints,
-                    ),
-                )
-            }
+            return constraintsByTable
         }
 
         private fun fetchViews(session: Session, objects: MutableList<DatabaseObject>) {
