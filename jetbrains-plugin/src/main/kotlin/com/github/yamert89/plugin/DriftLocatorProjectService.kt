@@ -12,10 +12,15 @@ class DriftLocatorProjectService(private val project: Project) {
     data class DatabaseConnection(
         val id: String,
         val name: String,
-        val url: String,
+        val host: String,
+        val port: Int,
+        val database: String,
         val username: String,
         val password: String,
-    )
+    ) {
+        val url: String
+            get() = "jdbc:postgresql://$host:$port/$database"
+    }
 
     companion object {
         fun getInstance(project: Project): DriftLocatorProjectService = project.service<DriftLocatorProjectService>()
