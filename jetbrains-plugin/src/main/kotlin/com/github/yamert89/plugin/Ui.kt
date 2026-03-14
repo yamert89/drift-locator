@@ -5,6 +5,7 @@ package com.github.yamert89.plugin
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.intellij.ui.components.JBTextField
@@ -46,9 +47,8 @@ class DriftLocatorAction : AnAction() {
 }
 
 class SchemaComparisonDialog(private val project: Project, private val service: DriftLocatorProjectService) : DialogWrapper(project) {
-    private val connectionComboBox = JComboBox<String>()
+    private val connectionComboBox = ComboBox<String>()
     private val schema1Field = JBTextField()
-    private val schema2Field = JBTextField()
 
     init {
         updateConnectionList()
@@ -69,9 +69,6 @@ class SchemaComparisonDialog(private val project: Project, private val service: 
             row("Schema 1:") {
                 cell(schema1Field)
             }
-            row("Schema 2:") {
-                cell(schema2Field)
-            }
         }
 
     override fun doOKAction() {
@@ -79,7 +76,7 @@ class SchemaComparisonDialog(private val project: Project, private val service: 
             Messages.showErrorDialog("Please select a connection", "Error")
             return
         }
-        if (schema1Field.text.isEmpty() || schema2Field.text.isEmpty()) {
+        if (schema1Field.text.isEmpty()) {
             Messages.showErrorDialog("Please enter both schema names", "Error")
             return
         }
@@ -89,8 +86,6 @@ class SchemaComparisonDialog(private val project: Project, private val service: 
     fun getSelectedConnection(): String? = connectionComboBox.selectedItem as String?
 
     fun getSchema1(): String = schema1Field.text
-
-    fun getSchema2(): String = schema2Field.text
 
     fun setSelectedConnection(connection: String) {
         if (connectionComboBox.itemCount == 0) {
@@ -103,9 +98,6 @@ class SchemaComparisonDialog(private val project: Project, private val service: 
         schema1Field.text = schema
     }
 
-    fun setSchema2(schema: String) {
-        schema2Field.text = schema
-    }
 }
 
 class AddConnectionAction : AnAction() {
