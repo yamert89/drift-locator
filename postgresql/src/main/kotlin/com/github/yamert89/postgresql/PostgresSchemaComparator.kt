@@ -4,10 +4,13 @@ import com.github.yamert89.core.DatabaseObject
 import com.github.yamert89.core.DatabaseSchema
 import com.github.yamert89.core.SchemaComparator
 import com.github.yamert89.core.SchemaDiff
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotliquery.Session
 import kotliquery.queryOf
 import java.sql.Connection
 import kotliquery.Connection as KConnection
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * PostgreSQL schema comparator that fetches schema via JDBC.
@@ -33,30 +36,55 @@ class PostgresSchemaComparator : SchemaComparator {
 
     companion object {
         /**
-         * Fetches schema from a PostgreSQL database.
+         * Fetches all schemas from a PostgreSQL database (excluding system schemas).
          */
         fun fetchSchema(connection: Connection): DatabaseSchema {
+            return fetchSchema(connection, null)
+        }
+
+        /**
+         * Fetches a specific schema from a PostgreSQL database.
+         * @param connection JDBC connection
+         * @param schemaName schema name to fetch, or null to fetch all non-system schemas
+         */
+        fun fetchSchema(connection: Connection, schemaName: String?): DatabaseSchema {
+            logger.info { "Fetching schema ${schemaName ?: "(all non-system)"}" }
             val session = Session(KConnection(connection))
             val objects = mutableListOf<DatabaseObject>()
 
             // Fetch tables with columns, indexes, constraints
-            fetchTables(session, objects)
-            // Fetch views
-            fetchViews(session, objects)
-            // Fetch functions
-            fetchFunctions(session, objects)
-            // Fetch procedures
-            fetchProcedures(session, objects)
-            // Fetch sequences
-            fetchSequences(session, objects)
+            logger.debug { "Fetching tables..." }
+            fetchTables(session, objects, schemaName)
+            logger.debug { "Tables fetched: ${objects.size} objects so far" }
 
+            // Fetch views
+            logger.debug { "Fetching views..." }
+            fetchViews(session, objects, schemaName)
+
+            // Fetch functions
+            logger.debug { "Fetching functions..." }
+            fetchFunctions(session, objects, schemaName)
+
+            // Fetch procedures
+            logger.debug { "Fetching procedures..." }
+            fetchProcedures(session, objects, schemaName)
+
+            // Fetch sequences
+            logger.debug { "Fetching sequences..." }
+            fetchSequences(session, objects, schemaName)
+
+            logger.info { "Schema fetch complete: ${objects.size} total objects" }
             return DatabaseSchema(objects)
         }
 
-        private fun fetchTables(session: Session, objects: MutableList<DatabaseObject>) {
-            val columnsByTable = fetchColumns(session)
-            val indexesByTable = fetchIndexes(session)
-            val constraintsByTable = fetchConstraints(session)
+        private fun fetchTables(
+            session: Session,
+            objects: MutableList<DatabaseObject>,
+            schemaName: String? = null,
+        ) {
+            val columnsByTable = fetchColumns(session, schemaName)
+            val indexesByTable = fetchIndexes(session, schemaName)
+            val constraintsByTable = fetchConstraints(session, schemaName)
 
             // Create table objects
             val allTables = (columnsByTable.keys + indexesByTable.keys + constraintsByTable.keys).toSet()
@@ -76,16 +104,18 @@ class PostgresSchemaComparator : SchemaComparator {
             }
         }
 
-        private fun fetchColumns(session: Session): Map<Pair<String, String>, List<PostgresColumn>> {
+        private fun fetchColumns(session: Session, schemaName: String? = null): Map<Pair<String, String>, List<PostgresColumn>> {
             val columnsByTable = mutableMapOf<Pair<String, String>, MutableList<PostgresColumn>>()
+            val schemaFilter = schemaName?.let { "AND table_schema = ?" } ?: ""
             val columnQuery =
                 """
                 SELECT table_schema, table_name, column_name, data_type, is_nullable, column_default, ordinal_position
                 FROM information_schema.columns
-                WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+                WHERE table_schema NOT IN ('pg_catalog', 'information_schema') $schemaFilter
                 ORDER BY table_schema, table_name, ordinal_position
                 """.trimIndent()
-            session.forEach(queryOf(columnQuery)) { row ->
+            val query = schemaName?.let { queryOf(columnQuery, it) } ?: queryOf(columnQuery)
+            session.forEach(query) { row ->
                 val schema = row.string("table_schema")
                 val table = row.string("table_name")
                 val column = row.toPostgresColumn()
@@ -94,15 +124,17 @@ class PostgresSchemaComparator : SchemaComparator {
             return columnsByTable
         }
 
-        private fun fetchIndexes(session: Session): Map<Pair<String, String>, List<PostgresIndex>> {
+        private fun fetchIndexes(session: Session, schemaName: String? = null): Map<Pair<String, String>, List<PostgresIndex>> {
             val indexesByTable = mutableMapOf<Pair<String, String>, MutableList<PostgresIndex>>()
+            val schemaFilter = schemaName?.let { "AND schemaname = ?" } ?: ""
             val indexQuery =
                 """
                 SELECT schemaname, tablename, indexname, indexdef
                 FROM pg_indexes
-                WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+                WHERE schemaname NOT IN ('pg_catalog', 'information_schema') $schemaFilter
                 """.trimIndent()
-            session.forEach(queryOf(indexQuery)) { row ->
+            val query = schemaName?.let { queryOf(indexQuery, it) } ?: queryOf(indexQuery)
+            session.forEach(query) { row ->
                 val schema = row.string("schemaname")
                 val table = row.string("tablename")
                 val index = row.toPostgresIndex()
@@ -111,8 +143,9 @@ class PostgresSchemaComparator : SchemaComparator {
             return indexesByTable
         }
 
-        private fun fetchConstraints(session: Session): Map<Pair<String, String>, List<PostgresConstraint>> {
+        private fun fetchConstraints(session: Session, schemaName: String? = null): Map<Pair<String, String>, List<PostgresConstraint>> {
             val constraintsByTable = mutableMapOf<Pair<String, String>, MutableList<PostgresConstraint>>()
+            val schemaFilter = schemaName?.let { "AND tc.table_schema = ?" } ?: ""
             val constraintQuery =
                 """
                 SELECT tc.table_schema, tc.table_name, tc.constraint_name, tc.constraint_type,
@@ -122,10 +155,11 @@ class PostgresSchemaComparator : SchemaComparator {
                     ON tc.constraint_name = kcu.constraint_name
                     AND tc.table_schema = kcu.table_schema
                     AND tc.table_name = kcu.table_name
-                WHERE tc.table_schema NOT IN ('pg_catalog', 'information_schema')
+                WHERE tc.table_schema NOT IN ('pg_catalog', 'information_schema') $schemaFilter
                 GROUP BY tc.table_schema, tc.table_name, tc.constraint_name, tc.constraint_type
                 """.trimIndent()
-            session.forEach(queryOf(constraintQuery)) { row ->
+            val query = schemaName?.let { queryOf(constraintQuery, it) } ?: queryOf(constraintQuery)
+            session.forEach(query) { row ->
                 val schema = row.string("table_schema")
                 val table = row.string("table_name")
                 val constraint = row.toPostgresConstraint()
@@ -134,16 +168,22 @@ class PostgresSchemaComparator : SchemaComparator {
             return constraintsByTable
         }
 
-        private fun fetchViews(session: Session, objects: MutableList<DatabaseObject>) {
+        private fun fetchViews(
+            session: Session,
+            objects: MutableList<DatabaseObject>,
+            schemaName: String? = null,
+        ) {
             // Fetch view definitions
+            val schemaFilter = schemaName?.let { "AND table_schema = ?" } ?: ""
             val viewQuery =
                 """
                 SELECT table_schema, table_name
                 FROM information_schema.views
-                WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+                WHERE table_schema NOT IN ('pg_catalog', 'information_schema') $schemaFilter
                 """.trimIndent()
+            val viewQueryObj = schemaName?.let { queryOf(viewQuery, it) } ?: queryOf(viewQuery)
             val views = mutableListOf<Pair<String, String>>()
-            session.forEach(queryOf(viewQuery)) { row ->
+            session.forEach(viewQueryObj) { row ->
                 val schema = row.string("table_schema")
                 val viewName = row.string("table_name")
                 views.add(schema to viewName)
@@ -153,14 +193,16 @@ class PostgresSchemaComparator : SchemaComparator {
             val columnsByView = mutableMapOf<Pair<String, String>, MutableList<PostgresColumn>>()
             if (views.isNotEmpty()) {
                 val placeholders = views.joinToString(",") { "('${it.first}', '${it.second}')" }
+                val schemaFilter2 = schemaName?.let { "AND table_schema = ?" } ?: ""
                 val columnQuery =
                     """
                     SELECT table_schema, table_name, column_name, data_type, is_nullable, column_default, ordinal_position
                     FROM information_schema.columns
-                    WHERE (table_schema, table_name) IN ($placeholders)
+                    WHERE (table_schema, table_name) IN ($placeholders) $schemaFilter2
                     ORDER BY table_schema, table_name, ordinal_position
                     """.trimIndent()
-                session.forEach(queryOf(columnQuery)) { row ->
+                val columnQueryObj = schemaName?.let { queryOf(columnQuery, it) } ?: queryOf(columnQuery)
+                session.forEach(columnQueryObj) { row ->
                     val schema = row.string("table_schema")
                     val viewName = row.string("table_name")
                     val column = row.toPostgresColumn()
@@ -181,8 +223,13 @@ class PostgresSchemaComparator : SchemaComparator {
             }
         }
 
-        private fun fetchFunctions(session: Session, objects: MutableList<DatabaseObject>) {
+        private fun fetchFunctions(
+            session: Session,
+            objects: MutableList<DatabaseObject>,
+            schemaName: String? = null,
+        ) {
             // Fetch functions from pg_proc
+            val schemaFilter = schemaName?.let { "AND n.nspname = ?" } ?: ""
             val functionQuery =
                 """
                 SELECT n.nspname AS schema, p.proname AS function_name,
@@ -192,16 +239,22 @@ class PostgresSchemaComparator : SchemaComparator {
                 FROM pg_proc p
                 JOIN pg_namespace n ON p.pronamespace = n.oid
                 JOIN pg_language l ON p.prolang = l.oid
-                WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+                WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') $schemaFilter
                 AND p.prokind = 'f'  -- functions
                 """.trimIndent()
-            session.forEach(queryOf(functionQuery)) { row ->
+            val query = schemaName?.let { queryOf(functionQuery, it) } ?: queryOf(functionQuery)
+            session.forEach(query) { row ->
                 objects.add(row.toPostgresFunction())
             }
         }
 
-        private fun fetchProcedures(session: Session, objects: MutableList<DatabaseObject>) {
+        private fun fetchProcedures(
+            session: Session,
+            objects: MutableList<DatabaseObject>,
+            schemaName: String? = null,
+        ) {
             // Fetch procedures from pg_proc where prokind = 'p'
+            val schemaFilter = schemaName?.let { "AND n.nspname = ?" } ?: ""
             val procedureQuery =
                 """
                 SELECT n.nspname AS schema, p.proname AS procedure_name,
@@ -210,23 +263,30 @@ class PostgresSchemaComparator : SchemaComparator {
                 FROM pg_proc p
                 JOIN pg_namespace n ON p.pronamespace = n.oid
                 JOIN pg_language l ON p.prolang = l.oid
-                WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+                WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') $schemaFilter
                 AND p.prokind = 'p'  -- procedures
                 """.trimIndent()
-            session.forEach(queryOf(procedureQuery)) { row ->
+            val query = schemaName?.let { queryOf(procedureQuery, it) } ?: queryOf(procedureQuery)
+            session.forEach(query) { row ->
                 objects.add(row.toPostgresProcedure())
             }
         }
 
-        private fun fetchSequences(session: Session, objects: MutableList<DatabaseObject>) {
+        private fun fetchSequences(
+            session: Session,
+            objects: MutableList<DatabaseObject>,
+            schemaName: String? = null,
+        ) {
             // Fetch sequences from information_schema.sequences
+            val schemaFilter = schemaName?.let { "AND sequence_schema = ?" } ?: ""
             val sequenceQuery =
                 """
                 SELECT sequence_schema, sequence_name, data_type, start_value, increment
                 FROM information_schema.sequences
-                WHERE sequence_schema NOT IN ('pg_catalog', 'information_schema')
+                WHERE sequence_schema NOT IN ('pg_catalog', 'information_schema') $schemaFilter
                 """.trimIndent()
-            session.forEach(queryOf(sequenceQuery)) { row ->
+            val query = schemaName?.let { queryOf(sequenceQuery, it) } ?: queryOf(sequenceQuery)
+            session.forEach(query) { row ->
                 objects.add(row.toPostgresSequence())
             }
         }

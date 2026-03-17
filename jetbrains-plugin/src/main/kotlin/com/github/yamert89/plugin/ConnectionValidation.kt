@@ -2,8 +2,11 @@ package com.github.yamert89.plugin
 
 import com.github.yamert89.postgresql.PostgresConnectionTester
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+
+private val LOG = Logger.getInstance("DriftLocator.ConnectionValidation")
 
 /**
  * Validates a database connection in a background thread and invokes callbacks accordingly.
@@ -20,29 +23,47 @@ fun validateConnectionInBackground(
     connection: DriftLocatorProjectService.DatabaseConnection,
     service: DriftLocatorProjectService,
     onSuccess: (() -> Unit)? = null,
-    onFailure: (() -> Unit)? = null
+    onFailure: (() -> Unit)? = null,
 ) {
+    LOG.info(
+        "Starting connection validation for '${connection.name}' " +
+            "(${connection.host}:${connection.port}/${connection.database})",
+    )
+
     ApplicationManager.getApplication().executeOnPooledThread {
-        val isConnected = PostgresConnectionTester.testConnection(
-            host = connection.host,
-            port = connection.port,
-            database = connection.database,
-            username = connection.username,
-            password = connection.password
-        )
+        val isConnected =
+            try {
+                PostgresConnectionTester.testConnection(
+                    host = connection.host,
+                    port = connection.port,
+                    database = connection.database,
+                    username = connection.username,
+                    password = connection.password,
+                )
+            } catch (e: Exception) {
+                LOG.error("Connection validation threw exception for '${connection.name}'", e)
+                false
+            }
         ApplicationManager.getApplication().invokeLater {
             if (isConnected) {
+                LOG.info("Connection '${connection.name}' validated successfully")
                 onSuccess?.invoke()
             } else {
+                LOG.warn("Connection '${connection.name}' validation failed")
                 if (onFailure != null) {
                     onFailure.invoke()
                 } else {
                     // Default failure behavior: remove connection and show error dialog
-                    service.connections.remove(connection.id)
+                    LOG.info(
+                        "Removing connection '${connection.name}' from service due to " +
+                            "validation failure",
+                    )
+                    service.removeConnection(connection.id)
                     Messages.showErrorDialog(
                         project,
-                        "Connection '${connection.name}' failed to connect. Please check the connection details.",
-                        "Connection Error"
+                        "Connection '${connection.name}' failed to connect. " +
+                            "Please check the connection details.",
+                        "Connection Error",
                     )
                 }
             }

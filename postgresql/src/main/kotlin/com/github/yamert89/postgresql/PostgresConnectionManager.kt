@@ -1,11 +1,16 @@
 package com.github.yamert89.postgresql
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import java.sql.Connection
 import java.sql.DriverManager
 
 private val logger = KotlinLogging.logger {}
 
-object PostgresConnectionTester {
+/**
+ * Manages PostgreSQL database connections.
+ * Handles driver initialization and connection creation.
+ */
+object PostgresConnectionManager {
     init {
         // Explicitly load PostgreSQL driver (required in IntelliJ plugin context)
         try {
@@ -18,42 +23,37 @@ object PostgresConnectionTester {
     }
 
     /**
-     * Tests connection to a PostgreSQL database.
-     * @return true if connection successful
-     * @throws Exception if connection fails (exception is logged and re-thrown)
+     * Creates a connection to a PostgreSQL database.
+     *
+     * @param host Database host
+     * @param port Database port
+     * @param database Database name
+     * @param username Database username
+     * @param password Database password (can be null or empty for passwordless auth)
+     * @return JDBC Connection
+     * @throws Exception if connection fails
      */
-    fun testConnection(
+    fun getConnection(
         host: String,
         port: Int,
         database: String,
         username: String,
         password: String?,
-    ): Boolean {
+    ): Connection {
         val url = "jdbc:postgresql://$host:$port/$database"
-        val passwordStatus = if (password.isNullOrEmpty()) "not set" else "set"
-        logger.info {
-            "Testing connection to $url with username='$username', password=$passwordStatus"
-        }
+        logger.debug { "Creating connection to $url" }
 
-        try {
+        return try {
             val conn =
                 if (password.isNullOrEmpty()) {
-                    logger.debug { "Connecting without password" }
                     DriverManager.getConnection(url, username, "")
                 } else {
                     DriverManager.getConnection(url, username, password)
                 }
-            conn.use { connection ->
-                val isValid = connection.isValid(5)
-                if (isValid) {
-                    logger.info { "Connection to $url successful" }
-                } else {
-                    logger.warn { "Connection to $url returned invalid status" }
-                }
-                return isValid
-            }
+            logger.debug { "Connection created successfully" }
+            conn
         } catch (e: Exception) {
-            logger.error(e) { "Connection to $url failed: ${e.message}" }
+            logger.error(e) { "Failed to create connection to $url: ${e.message}" }
             throw e
         }
     }

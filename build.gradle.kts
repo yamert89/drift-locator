@@ -21,6 +21,7 @@ subprojects {
 
     dependencies {
         implementation(kotlin("stdlib"))
+        implementation("io.github.oshai:kotlin-logging-jvm:7.0.3")
     }
 
     tasks.withType<Test> {

@@ -37,7 +37,10 @@ dependencies {
         zipSigner()
         testFramework(TestFrameworkType.Platform)
     }
+    implementation(project(":core"))
     implementation(project(":postgresql"))
+    // SLF4J binding for kotlin-logging to redirect logs to IntelliJ's console
+    implementation("org.slf4j:slf4j-simple:2.0.16")
 }
 
 intellijPlatform {
