@@ -37,6 +37,7 @@ dependencies {
         zipSigner()
         testFramework(TestFrameworkType.Platform)
     }
+    implementation(project(":postgresql"))
 }
 
 intellijPlatform {

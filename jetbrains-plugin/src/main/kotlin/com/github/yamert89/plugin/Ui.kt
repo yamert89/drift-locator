@@ -10,41 +10,9 @@ import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.*
-import java.awt.GridBagLayout
-import javax.swing.JComboBox
 import javax.swing.JComponent
-import javax.swing.JLabel
-import javax.swing.JPanel
 import javax.swing.JPasswordField
 import javax.swing.JTextField
-
-class DriftLocatorAction : AnAction() {
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        val service = DriftLocatorProjectService.getInstance(project)
-
-        val dialog = SchemaComparisonDialog(project, service)
-        if (dialog.showAndGet()) {
-            // Perform comparison logic here
-            performComparison(project, service, dialog)
-        }
-    }
-
-    @Suppress("UNUSED_PARAMETER")
-    private fun performComparison(
-        project: Project,
-        unusedService: DriftLocatorProjectService,
-        unusedDialog: SchemaComparisonDialog,
-    ) {
-        // Implement actual comparison using core module
-        Messages.showMessageDialog(
-            project,
-            "Schema comparison would be performed here",
-            "Comparison Result",
-            Messages.getInformationIcon(),
-        )
-    }
-}
 
 class SchemaComparisonDialog(private val project: Project, private val service: DriftLocatorProjectService) : DialogWrapper(project) {
     private val connectionComboBox = ComboBox<String>()
@@ -98,26 +66,6 @@ class SchemaComparisonDialog(private val project: Project, private val service: 
         schema1Field.text = schema
     }
 
-}
-
-class AddConnectionAction : AnAction() {
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        val dialog = AddConnectionDialog(project)
-        if (dialog.showAndGet()) {
-            val service = DriftLocatorProjectService.getInstance(project)
-            service.connections[dialog.getConnectionName()] =
-                DriftLocatorProjectService.DatabaseConnection(
-                    id = dialog.getConnectionName(),
-                    name = dialog.getConnectionName(),
-                    host = dialog.getHost(),
-                    port = dialog.getPort(),
-                    database = dialog.getDatabase(),
-                    username = dialog.getUsername(),
-                    password = dialog.getPassword(),
-                )
-        }
-    }
 }
 
 class AddConnectionDialog(private val project: Project) : DialogWrapper(project) {

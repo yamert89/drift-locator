@@ -2,7 +2,13 @@
 
 package com.github.yamert89.plugin
 
+import com.github.yamert89.postgresql.PostgresConnectionTester
+import com.intellij.openapi.actionSystem.ActionGroup
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.components.JBList
@@ -42,85 +48,24 @@ class DriftLocatorToolWindowPanel(private val project: Project) : JPanel(BorderL
 
     private fun initUI() {
         // Create buttons using helper methods
-        val addButton = createAddButton()
-        val deleteButton = createDeleteButton()
-        val compareButton = createCompareButton()
-
-        // Toolbar panel
-        val toolbar = JPanel()
-        toolbar.layout = BoxLayout(toolbar, BoxLayout.X_AXIS)
-        toolbar.add(addButton)
-        toolbar.add(Box.createHorizontalStrut(BUTTON_SPACING))
-        toolbar.add(deleteButton)
-        toolbar.add(Box.createHorizontalStrut(BUTTON_SPACING))
-        toolbar.add(compareButton)
-        toolbar.add(Box.createHorizontalGlue())
+        val actManager = ActionManager.getInstance()
+        val group = actManager.getAction("com.github.yamert89.plugin.toolWindow") as ActionGroup
+        val toolBar = actManager.createActionToolbar(ActionPlaces.TOOLBAR, group, true)
+        toolBar.targetComponent = this
+        add(toolBar.component, BorderLayout.PAGE_START)
 
         // List of connections
         connectionList.model = listModel
         connectionList.selectionMode = ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
         val scrollPane = JBScrollPane(connectionList)
 
-        // Build UI with DSL
-        val contentPanel =
-            panel {
-                row {
-                    cell(toolbar)
-                }
-                row {
-                    cell(scrollPane).apply {
-                        resizableColumn()
-                    }
-                }.resizableRow()
-            }
-
         // Add to main panel (which uses BorderLayout)
-        add(contentPanel, BorderLayout.CENTER)
+        add(scrollPane, BorderLayout.CENTER)
     }
 
     private fun updateConnectionList() {
         listModel.clear()
         service.connections.keys.forEach { listModel.addElement(it) }
-    }
-
-    private fun createAddButton(): JButton {
-        val button = JButton("Add Connection")
-        button.addActionListener {
-            val dialog = AddConnectionDialog(project)
-            if (dialog.showAndGet()) {
-                service.connections[dialog.getConnectionName()] =
-                    DriftLocatorProjectService.DatabaseConnection(
-                        id = dialog.getConnectionName(),
-                        name = dialog.getConnectionName(),
-                        host = dialog.getHost(),
-                        port = dialog.getPort(),
-                        database = dialog.getDatabase(),
-                        username = dialog.getUsername(),
-                        password = dialog.getPassword(),
-                    )
-                updateConnectionList()
-            }
-        }
-        return button
-    }
-
-    private fun createDeleteButton(): JButton {
-        val button = JButton("Delete Connection")
-        button.addActionListener {
-            val selected = connectionList.selectedValuesList
-            if (selected.isNotEmpty()) {
-                selected.forEach { service.connections.remove(it) }
-                updateConnectionList()
-            } else {
-                JOptionPane.showMessageDialog(
-                    this,
-                    "Please select at least one connection to delete",
-                    "No Selection",
-                    JOptionPane.WARNING_MESSAGE,
-                )
-            }
-        }
-        return button
     }
 
     private fun createCompareButton(): JButton {

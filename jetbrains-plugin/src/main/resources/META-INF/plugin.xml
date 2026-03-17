@@ -21,12 +21,20 @@
     </extensions>
 
     <actions>
-        <group id="DriftLocatorGroup" text="Drift Locator" description="Drift locator actions">
+        <group id="com.github.yamert89.plugin.toolWindow" text="Drift Locator" description="Drift locator actions">
             <add-to-group group-id="MainMenu" anchor="last"/>
-            <action id="DriftLocatorAction" class="com.github.yamert89.plugin.DriftLocatorAction" text="Compare Schemas" description="Compare database schemas"/>
+            <action id="com.github.yamert89.plugin.AddConnectionAction"
+                    class="com.github.yamert89.plugin.AddConnectionAction" text="Add Connection"
+                    icon="AllIcons.Actions.AddFile"
+                    description="Add connection"/>
+            <action id="DriftLocatorAction" class="com.github.yamert89.plugin.DriftLocatorAction" text="Compare Schemas"
+                    icon="AllIcons.Actions.Compile"
+                    description="Compare database schemas"/>
+            <action id="com.github.yamert89.plugin.DeleteConnectionAction"
+                    class="com.github.yamert89.plugin.DeleteConnectionAction" text="Delete"
+                    icon="AllIcons.Actions.DeleteTag"
+                    description="Delete connection"/>
         </group>
-        <action id="com.github.yamert89.plugin.AddConnectionAction"
-                class="com.github.yamert89.plugin.AddConnectionAction" text="Add Connection"
-                description="Add connection"/>
+
     </actions>
 </idea-plugin>
