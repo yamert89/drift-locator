@@ -14,6 +14,7 @@ internal class DiffExporterTest {
         override val name: String,
         override val type: String,
         override val children: List<DatabaseObject> = emptyList(),
+        override val objectName: String = name,
     ) : DatabaseObject
 
     @Test
@@ -109,6 +110,14 @@ internal class DiffExporterTest {
     }
 
     @Test
+    fun `toText with schema includes schema name in header`() {
+        val schema = DatabaseSchema(emptyList())
+        val text = DiffExporter.toText(schema, "my_schema")
+
+        assertTrue(text.contains("Schema: my_schema"))
+    }
+
+    @Test
     fun `toText with schema exports children sorted`() {
         val childObjects =
             listOf(
@@ -124,6 +133,16 @@ internal class DiffExporterTest {
         val zIndex = text.indexOf("[COLUMN] z_col")
         assertTrue(aIndex < mIndex, "a_col should come before m_col")
         assertTrue(mIndex < zIndex, "m_col should come before z_col")
+    }
+
+    @Test
+    fun `toText uses objectName instead of name`() {
+        val objWithSchema = MockObject("public.table1", "TABLE", emptyList(), "table1")
+        val schema = DatabaseSchema(listOf(objWithSchema))
+        val text = DiffExporter.toText(schema)
+
+        assertTrue(text.contains("[TABLE] table1"))
+        assertTrue(!text.contains("[TABLE] public.table1"))
     }
 
     @Test

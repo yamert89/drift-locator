@@ -95,7 +95,7 @@ class PostgresSchemaComparator : SchemaComparator {
                 objects.add(
                     PostgresTable(
                         schema = schema,
-                        objectName = table,
+                        pgObjectName = table,
                         columns = columns,
                         indexes = indexes,
                         constraints = constraints,
@@ -216,7 +216,7 @@ class PostgresSchemaComparator : SchemaComparator {
                 objects.add(
                     PostgresView(
                         schema = schema,
-                        objectName = viewName,
+                        pgObjectName = viewName,
                         columns = columns,
                     ),
                 )

@@ -3,6 +3,7 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
     kotlin("jvm")
+    kotlin("plugin.serialization") version "2.3.10"
     id("org.jetbrains.intellij.platform") version "2.9.0"
     id("org.jetbrains.changelog") version "2.2.1"
 }
@@ -39,6 +40,8 @@ dependencies {
     }
     implementation(project(":core"))
     implementation(project(":postgresql"))
+    // Kotlinx Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     // SLF4J binding for kotlin-logging to redirect logs to IntelliJ's console
     implementation("org.slf4j:slf4j-simple:2.0.16")
 }

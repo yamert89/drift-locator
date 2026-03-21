@@ -4,8 +4,9 @@ import com.github.yamert89.core.DatabaseObject
 
 sealed class PostgresObject : DatabaseObject {
     abstract val schema: String
-    abstract val objectName: String
-    override val name: String get() = "$schema.$objectName"
+    abstract val pgObjectName: String
+    override val name: String get() = "$schema.$pgObjectName"
+    override val objectName: String get() = pgObjectName
 }
 
 /**
@@ -13,7 +14,7 @@ sealed class PostgresObject : DatabaseObject {
  */
 data class PostgresTable(
     override val schema: String,
-    override val objectName: String,
+    override val pgObjectName: String,
     val columns: List<PostgresColumn>,
     val indexes: List<PostgresIndex>,
     val constraints: List<PostgresConstraint>,
@@ -68,7 +69,7 @@ data class PostgresConstraint(
  */
 data class PostgresView(
     override val schema: String,
-    override val objectName: String,
+    override val pgObjectName: String,
     val columns: List<PostgresColumn>,
 ) : PostgresObject() {
     override val type: String = "VIEW"
@@ -80,7 +81,7 @@ data class PostgresView(
  */
 data class PostgresFunction(
     override val schema: String,
-    override val objectName: String,
+    override val pgObjectName: String,
     val returnType: String,
     val arguments: String,
     val language: String,
@@ -94,7 +95,7 @@ data class PostgresFunction(
  */
 data class PostgresProcedure(
     override val schema: String,
-    override val objectName: String,
+    override val pgObjectName: String,
     val arguments: String,
     val language: String,
 ) : PostgresObject() {
@@ -107,7 +108,7 @@ data class PostgresProcedure(
  */
 data class PostgresSequence(
     override val schema: String,
-    override val objectName: String,
+    override val pgObjectName: String,
     val dataType: String,
     val startValue: Long,
     val increment: Long,

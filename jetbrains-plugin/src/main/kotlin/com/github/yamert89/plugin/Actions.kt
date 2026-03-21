@@ -16,6 +16,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.VfsUtil
 import java.io.File
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 private val LOG = Logger.getInstance("DriftLocator.Actions")
 
@@ -198,19 +200,22 @@ class CompareConnectionsAction : AnAction() {
         sourceConnection: DriftLocatorProjectService.DatabaseConnection,
         targetConnection: DriftLocatorProjectService.DatabaseConnection,
     ) {
-        // Create temporary files with schema content
-        val tempDir = File(System.getProperty("java.io.tmpdir"), "drift-locator")
-        tempDir.mkdirs()
+        // Create report directory in project: .driftLocator/YYYY_MM_DD_HH_MM/
+        val formatter = DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm")
+        val timestamp = LocalDateTime.now().format(formatter)
+        val baseDir = File(project.basePath, ".driftLocator")
+        val reportDir = File(baseDir, timestamp)
+        reportDir.mkdirs()
 
-        val sourceFileName = "${sourceConnection.name}_${sourceConnection.schema}.txt"
-        val targetFileName = "${targetConnection.name}_${targetConnection.schema}.txt"
+        val sourceFileName = "${sourceConnection.name}.txt"
+        val targetFileName = "${targetConnection.name}.txt"
 
-        val sourceFile = File(tempDir, sourceFileName)
-        val targetFile = File(tempDir, targetFileName)
+        val sourceFile = File(reportDir, sourceFileName)
+        val targetFile = File(reportDir, targetFileName)
 
-        // Write schema content to files
-        sourceFile.writeText(DiffExporter.toText(sourceSchema))
-        targetFile.writeText(DiffExporter.toText(targetSchema))
+        // Write schema content to files (with schema name in header)
+        sourceFile.writeText(DiffExporter.toText(sourceSchema, sourceConnection.schema))
+        targetFile.writeText(DiffExporter.toText(targetSchema, targetConnection.schema))
 
         // Refresh virtual files
         val sourceVFile = VfsUtil.findFileByIoFile(sourceFile, true) ?: VfsUtil.findFileByIoFile(sourceFile, false)

@@ -8,6 +8,13 @@ interface DatabaseObject {
     val type: String
     val children: List<DatabaseObject>
         get() = emptyList()
+
+    /**
+     * Returns the object name without schema prefix.
+     * For objects that don't have schema (like columns), returns [name].
+     */
+    val objectName: String
+        get() = name
 }
 
 /**

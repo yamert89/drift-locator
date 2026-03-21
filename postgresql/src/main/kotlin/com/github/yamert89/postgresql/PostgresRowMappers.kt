@@ -51,7 +51,7 @@ fun Row.toPostgresConstraint(): PostgresConstraint {
 fun Row.toPostgresFunction(): PostgresFunction =
     PostgresFunction(
         schema = string("schema"),
-        objectName = string("function_name"),
+        pgObjectName = string("function_name"),
         returnType = string("return_type"),
         arguments = string("arguments"),
         language = string("language"),
@@ -63,7 +63,7 @@ fun Row.toPostgresFunction(): PostgresFunction =
 fun Row.toPostgresProcedure(): PostgresProcedure =
     PostgresProcedure(
         schema = string("schema"),
-        objectName = string("procedure_name"),
+        pgObjectName = string("procedure_name"),
         arguments = string("arguments"),
         language = string("language"),
     )
@@ -74,7 +74,7 @@ fun Row.toPostgresProcedure(): PostgresProcedure =
 fun Row.toPostgresSequence(): PostgresSequence =
     PostgresSequence(
         schema = string("sequence_schema"),
-        objectName = string("sequence_name"),
+        pgObjectName = string("sequence_name"),
         dataType = string("data_type"),
         startValue = long("start_value"),
         increment = long("increment"),

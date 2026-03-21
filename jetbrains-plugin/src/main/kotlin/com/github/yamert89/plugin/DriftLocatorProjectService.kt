@@ -3,6 +3,10 @@ package com.github.yamert89.plugin
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 @Service(Service.Level.PROJECT)
@@ -10,6 +14,17 @@ class DriftLocatorProjectService(private val project: Project) {
     val connections = ConcurrentHashMap<String, DatabaseConnection>()
     private val connectionChangeListeners = mutableListOf<() -> Unit>()
 
+    private val json =
+        Json {
+            prettyPrint = true
+            ignoreUnknownKeys = true
+        }
+
+    init {
+        loadConnections()
+    }
+
+    @Serializable
     data class DatabaseConnection(
         val id: String,
         val name: String,
@@ -17,7 +32,7 @@ class DriftLocatorProjectService(private val project: Project) {
         val port: Int,
         val database: String,
         val username: String,
-        val password: String?,
+        val password: String? = null,
         val schema: String = DEFAULT_SCHEMA_NAME,
     ) {
         val url: String
@@ -25,32 +40,35 @@ class DriftLocatorProjectService(private val project: Project) {
     }
 
     /**
-     * Adds a connection and notifies listeners.
+     * Adds a connection, saves to disk, and notifies listeners.
      */
     fun addConnection(connection: DatabaseConnection) {
         connections[connection.id] = connection
+        saveConnections()
         notifyConnectionChanged()
     }
 
     /**
-     * Removes a connection by ID and notifies listeners.
+     * Removes a connection by ID, saves to disk, and notifies listeners.
      * @return the removed connection or null if not found
      */
     fun removeConnection(id: String): DatabaseConnection? {
         val removed = connections.remove(id)
         if (removed != null) {
+            saveConnections()
             notifyConnectionChanged()
         }
         return removed
     }
 
     /**
-     * Updates the schema for a connection.
+     * Updates the schema for a connection and saves to disk.
      */
     fun updateConnectionSchema(id: String, schema: String): DatabaseConnection? {
         val existing = connections[id] ?: return null
         val updated = existing.copy(schema = schema)
         connections[id] = updated
+        saveConnections()
         notifyConnectionChanged()
         return updated
     }
@@ -76,9 +94,49 @@ class DriftLocatorProjectService(private val project: Project) {
         connectionChangeListeners.forEach { it() }
     }
 
+    /**
+     * Returns the directory for storing plugin system data (.driftLocator/system).
+     */
+    fun getSystemDir(): File {
+        val baseDir = File(project.basePath, ".driftLocator")
+        val systemDir = File(baseDir, "system")
+        systemDir.mkdirs()
+        return systemDir
+    }
+
+    private fun getConnectionsFile(): File = File(getSystemDir(), "connections.json")
+
+    private fun saveConnections() {
+        try {
+            val connectionsList = connections.values.toList()
+            val jsonString = json.encodeToString(connectionsList)
+            getConnectionsFile().writeText(jsonString)
+        } catch (e: Exception) {
+            LOG.warn("Failed to save connections: ${e.message}")
+        }
+    }
+
+    private fun loadConnections() {
+        try {
+            val file = getConnectionsFile()
+            if (file.exists()) {
+                val jsonString = file.readText()
+                val connectionsList = json.decodeFromString<List<DatabaseConnection>>(jsonString)
+                connections.clear()
+                connectionsList.forEach { connections[it.id] = it }
+                LOG.info("Loaded ${connections.size} connections from disk")
+            }
+        } catch (e: Exception) {
+            LOG.warn("Failed to load connections: ${e.message}")
+        }
+    }
+
     companion object {
         fun getInstance(project: Project): DriftLocatorProjectService = project.service<DriftLocatorProjectService>()
 
         const val DEFAULT_SCHEMA_NAME = "public"
+        private val LOG =
+            com.intellij.openapi.diagnostic.Logger
+                .getInstance(DriftLocatorProjectService::class.java)
     }
 }
