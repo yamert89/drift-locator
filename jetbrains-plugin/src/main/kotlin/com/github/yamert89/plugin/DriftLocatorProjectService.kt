@@ -18,6 +18,7 @@ class DriftLocatorProjectService(private val project: Project) {
         val database: String,
         val username: String,
         val password: String?,
+        val schema: String = DEFAULT_SCHEMA_NAME,
     ) {
         val url: String
             get() = "jdbc:postgresql://$host:$port/$database"
@@ -44,6 +45,17 @@ class DriftLocatorProjectService(private val project: Project) {
     }
 
     /**
+     * Updates the schema for a connection.
+     */
+    fun updateConnectionSchema(id: String, schema: String): DatabaseConnection? {
+        val existing = connections[id] ?: return null
+        val updated = existing.copy(schema = schema)
+        connections[id] = updated
+        notifyConnectionChanged()
+        return updated
+    }
+
+    /**
      * Registers a listener to be called when connections change.
      */
     fun addConnectionChangeListener(listener: () -> Unit) {
@@ -66,5 +78,7 @@ class DriftLocatorProjectService(private val project: Project) {
 
     companion object {
         fun getInstance(project: Project): DriftLocatorProjectService = project.service<DriftLocatorProjectService>()
+
+        const val DEFAULT_SCHEMA_NAME = "public"
     }
 }

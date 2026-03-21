@@ -15,67 +15,39 @@ import javax.swing.JComponent
 import javax.swing.JPasswordField
 import javax.swing.JTextField
 
-class SchemaComparisonDialog(private val project: Project, private val service: DriftLocatorProjectService) : DialogWrapper(project) {
-    private val connectionComboBox = ComboBox<String>()
-    private val schema1Field = JBTextField()
-    private val schema2Field = JBTextField()
+class ConnectionSchemaDialog(
+    private val project: Project,
+    private val service: DriftLocatorProjectService,
+    private val connectionId: String,
+) : DialogWrapper(project) {
+    private val schemaField = JBTextField()
+    private val connectionNameLabel: String
 
     init {
-        updateConnectionList()
+        val connection = service.connections[connectionId]
+        connectionNameLabel = connection?.name ?: connectionId
+        schemaField.text = connection?.schema ?: DriftLocatorProjectService.DEFAULT_SCHEMA_NAME
         init()
-        title = "Compare Database Schemas"
-    }
-
-    private fun updateConnectionList() {
-        connectionComboBox.removeAllItems()
-        service.connections.keys.forEach { connectionComboBox.addItem(it) }
+        title = "Schema for '$connectionNameLabel'"
     }
 
     override fun createCenterPanel(): JComponent =
         panel {
-            row("Connection:") {
-                cell(connectionComboBox)
-            }
-            row("Source Schema:") {
-                cell(schema1Field)
-            }
-            row("Target Schema:") {
-                cell(schema2Field)
+            row("Schema Name:") {
+                cell(schemaField)
+                    .comment("The schema name to use for this connection (e.g., 'public')")
             }
         }
 
     override fun doOKAction() {
-        if (connectionComboBox.selectedItem == null) {
-            Messages.showErrorDialog("Please select a connection", "Error")
-            return
-        }
-        if (schema1Field.text.isEmpty() || schema2Field.text.isEmpty()) {
-            Messages.showErrorDialog("Please enter both schema names", "Error")
-            return
-        }
-        if (schema1Field.text == schema2Field.text) {
-            Messages.showErrorDialog("Source and target schemas must be different", "Error")
+        if (schemaField.text.isEmpty()) {
+            Messages.showErrorDialog("Please enter a schema name", "Error")
             return
         }
         super.doOKAction()
     }
 
-    fun getSelectedConnection(): String? = connectionComboBox.selectedItem as String?
-
-    fun getSchema1(): String = schema1Field.text
-
-    fun getSchema2(): String = schema2Field.text
-
-    fun setSelectedConnection(connection: String) {
-        if (connectionComboBox.itemCount == 0) {
-            updateConnectionList()
-        }
-        connectionComboBox.selectedItem = connection
-    }
-
-    fun setSchema1(schema: String) {
-        schema1Field.text = schema
-    }
+    fun getSchemaName(): String = schemaField.text.trim()
 }
 
 class AddConnectionDialog(private val project: Project) : DialogWrapper(project) {
@@ -85,6 +57,7 @@ class AddConnectionDialog(private val project: Project) : DialogWrapper(project)
     private val databaseField = JTextField()
     private val usernameField = JTextField()
     private val passwordField = JPasswordField()
+    private val schemaField = JTextField(DriftLocatorProjectService.DEFAULT_SCHEMA_NAME)
 
     init {
         init()
@@ -95,21 +68,32 @@ class AddConnectionDialog(private val project: Project) : DialogWrapper(project)
         panel {
             row("Connection Name:") {
                 cell(nameField)
+                    .columns(15)
             }
             row("Host:") {
                 cell(hostField)
+                    .columns(15)
             }
             row("Port:") {
                 cell(portField)
+                    .columns(15)
             }
             row("Database:") {
                 cell(databaseField)
+                    .columns(15)
+            }
+            row("Schema:") {
+                cell(schemaField)
+                    .columns(15)
+                    .comment("Database schema to compare (default: 'public')")
             }
             row("Username:") {
                 cell(usernameField)
+                    .columns(15)
             }
-            row("Password (optional):") {
+            row("Password:") {
                 cell(passwordField)
+                    .columns(15)
             }
         }
 
@@ -120,6 +104,8 @@ class AddConnectionDialog(private val project: Project) : DialogWrapper(project)
     fun getPort(): Int = portField.text.toIntOrNull() ?: DEFAULT_POSTGRES_PORT
 
     fun getDatabase(): String = databaseField.text
+
+    fun getSchema(): String = schemaField.text.ifEmpty { DriftLocatorProjectService.DEFAULT_SCHEMA_NAME }
 
     fun getUsername(): String = usernameField.text
 

@@ -27,9 +27,14 @@
                     class="com.github.yamert89.plugin.AddConnectionAction" text="Add Connection"
                     icon="AllIcons.Actions.AddFile"
                     description="Add connection"/>
-            <action id="DriftLocatorAction" class="com.github.yamert89.plugin.DriftLocatorAction" text="Compare Schemas"
-                    icon="AllIcons.Actions.Compile"
-                    description="Compare database schemas"/>
+            <action id="com.github.yamert89.plugin.EditConnectionSchemaAction"
+                    class="com.github.yamert89.plugin.EditConnectionSchemaAction" text="Set Schema"
+                    icon="AllIcons.Actions.Edit"
+                    description="Edit schema for selected connection"/>
+            <action id="com.github.yamert89.plugin.CompareConnectionsAction"
+                    class="com.github.yamert89.plugin.CompareConnectionsAction" text="Compare"
+                    icon="AllIcons.Actions.Diff"
+                    description="Compare schemas between two selected connections"/>
             <action id="com.github.yamert89.plugin.DeleteConnectionAction"
                     class="com.github.yamert89.plugin.DeleteConnectionAction" text="Delete"
                     icon="AllIcons.Actions.DeleteTag"

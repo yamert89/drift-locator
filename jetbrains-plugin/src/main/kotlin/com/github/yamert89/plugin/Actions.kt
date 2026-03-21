@@ -12,113 +12,178 @@ import com.intellij.openapi.ui.Messages
 
 private val LOG = Logger.getInstance("DriftLocator.Actions")
 
-class DriftLocatorAction : AnAction() {
+class EditConnectionSchemaAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val service = DriftLocatorProjectService.getInstance(project)
+        val toolWindowPanel = getToolWindowPanel(project)
 
-        LOG.info("DriftLocatorAction triggered, connections count: ${service.connections.size}")
+        LOG.info("EditConnectionSchemaAction triggered")
 
-        // Check if there are connections
-        if (service.connections.isEmpty()) {
-            LOG.warn("No connections configured")
+        // Get selected connection from the tool window panel
+        val selectedConnections = toolWindowPanel?.getSelectedConnections() ?: emptyList()
+
+        if (selectedConnections.size != 1) {
+            LOG.warn("Invalid number of connections selected: ${selectedConnections.size}")
             Messages.showErrorDialog(
                 project,
-                "No database connections configured. Please add a connection first.",
-                "No Connections",
+                "Please select exactly one connection to edit its schema.",
+                "Selection Error",
             )
             return
         }
 
-        val dialog = SchemaComparisonDialog(project, service)
+        val connectionId = selectedConnections[0]
+        val dialog = ConnectionSchemaDialog(project, service, connectionId)
         if (dialog.showAndGet()) {
-            LOG.info(
-                "Schema comparison dialog confirmed, connection: ${dialog.getSelectedConnection()}, " +
-                    "schemas: ${dialog.getSchema1()} vs ${dialog.getSchema2()}",
-            )
-            performComparison(project, service, dialog)
+            val schemaName = dialog.getSchemaName()
+            service.updateConnectionSchema(connectionId, schemaName)
+            LOG.info("Schema updated for connection '$connectionId' to: $schemaName")
         } else {
-            LOG.debug("Schema comparison dialog cancelled")
+            LOG.debug("Schema dialog cancelled")
+        }
+    }
+
+    private fun getToolWindowPanel(project: Project): DriftLocatorToolWindowPanel? {
+        val toolWindow =
+            com.intellij.openapi.wm.ToolWindowManager
+                .getInstance(project)
+                .getToolWindow("DriftLocator")
+        return toolWindow
+            ?.contentManager
+            ?.getContent(0)
+            ?.component as? DriftLocatorToolWindowPanel
+    }
+}
+
+class CompareConnectionsAction : AnAction() {
+    override fun actionPerformed(e: AnActionEvent) {
+        val project = e.project
+        if (project == null) {
+            return
+        }
+
+        val service = DriftLocatorProjectService.getInstance(project)
+        val toolWindowPanel = getToolWindowPanel(project)
+
+        LOG.info("CompareConnectionsAction triggered, connections count: ${service.connections.size}")
+
+        // Check if there are enough connections
+        if (service.connections.size < 2) {
+            LOG.warn("Not enough connections configured")
+            Messages.showErrorDialog(
+                project,
+                "At least 2 database connections are required for comparison. Please add more connections.",
+                "Not Enough Connections",
+            )
+        } else {
+            // Get selected connections from the tool window panel
+            val selectedConnections = toolWindowPanel?.getSelectedConnections() ?: emptyList()
+
+            if (selectedConnections.size != 2) {
+                LOG.warn("Invalid number of connections selected: ${selectedConnections.size}")
+                Messages.showErrorDialog(
+                    project,
+                    "Please select exactly 2 connections in the list to compare.",
+                    "Selection Error",
+                )
+            } else {
+                val sourceConnectionId = selectedConnections[0]
+                val targetConnectionId = selectedConnections[1]
+                performComparison(project, service, sourceConnectionId, targetConnectionId)
+            }
         }
     }
 
     private fun performComparison(
         project: Project,
         service: DriftLocatorProjectService,
-        dialog: SchemaComparisonDialog,
+        sourceConnectionId: String,
+        targetConnectionId: String,
     ) {
-        val connectionId = dialog.getSelectedConnection() ?: return
-        val sourceSchemaName = dialog.getSchema1()
-        val targetSchemaName = dialog.getSchema2()
+        val sourceConnection = service.connections[sourceConnectionId]
+        val targetConnection = service.connections[targetConnectionId]
 
-        val connection =
-            service.connections[connectionId]
-                ?: run {
-                    LOG.error("Connection not found: $connectionId")
-                    Messages.showErrorDialog(project, "Connection not found: $connectionId", "Error")
-                    return
-                }
+        if (sourceConnection == null) {
+            LOG.error("Source connection not found: $sourceConnectionId")
+            Messages.showErrorDialog(project, "Source connection not found: $sourceConnectionId", "Error")
+            return
+        }
+
+        if (targetConnection == null) {
+            LOG.error("Target connection not found: $targetConnectionId")
+            Messages.showErrorDialog(project, "Target connection not found: $targetConnectionId", "Error")
+            return
+        }
 
         LOG.info(
-            "Starting schema comparison using connection '${connection.name}' " +
-                "for schemas '$sourceSchemaName' vs '$targetSchemaName'",
+            "Starting schema comparison between connections: '$sourceConnectionId' " +
+                "(schema: '${sourceConnection.schema}') and '$targetConnectionId' " +
+                "(schema: '${targetConnection.schema}')",
         )
 
-        // Perform comparison in background
         ApplicationManager.getApplication().executeOnPooledThread {
-            try {
-                LOG.debug("Opening database connection via PostgresConnectionManager")
-                PostgresConnectionManager
-                    .getConnection(
-                        host = connection.host,
-                        port = connection.port,
-                        database = connection.database,
-                        username = connection.username,
-                        password = connection.password,
-                    ).use { conn ->
-                        LOG.debug("Fetching source schema: $sourceSchemaName")
-                        val sourceSchema = PostgresSchemaComparator.fetchSchema(conn, sourceSchemaName)
-                        LOG.debug("Source schema fetched, objects count: ${sourceSchema.objects.size}")
+            executeComparison(project, sourceConnection, targetConnection)
+        }
+    }
 
-                        LOG.debug("Fetching target schema: $targetSchemaName")
-                        val targetSchema = PostgresSchemaComparator.fetchSchema(conn, targetSchemaName)
-                        LOG.debug("Target schema fetched, objects count: ${targetSchema.objects.size}")
+    private fun executeComparison(
+        project: Project,
+        sourceConnection: DriftLocatorProjectService.DatabaseConnection,
+        targetConnection: DriftLocatorProjectService.DatabaseConnection,
+    ) {
+        try {
+            val sourceSchema = fetchSchemaFromConnection(sourceConnection)
+            LOG.debug("Source schema fetched, objects count: ${sourceSchema.objects.size}")
 
-                        LOG.debug("Comparing schemas")
-                        val comparator = PostgresSchemaComparator()
-                        val diff = comparator.compare(sourceSchema, targetSchema)
-                        LOG.info(
-                            "Comparison complete - added: ${diff.added.size}, " +
-                                "removed: ${diff.removed.size}, modified: ${diff.modified.size}",
-                        )
+            val targetSchema = fetchSchemaFromConnection(targetConnection)
+            LOG.debug("Target schema fetched, objects count: ${targetSchema.objects.size}")
 
-                        // Export to text
-                        val resultText = DiffExporter.toText(diff)
+            val diff = PostgresSchemaComparator().compare(sourceSchema, targetSchema)
+            LOG.info(
+                "Comparison complete - added: ${diff.added.size}, " +
+                    "removed: ${diff.removed.size}, modified: ${diff.modified.size}",
+            )
 
-                        // Show result on UI thread
-                        ApplicationManager.getApplication().invokeLater {
-                            if (diff.added.isEmpty() && diff.removed.isEmpty() && diff.modified.isEmpty()) {
-                                LOG.info("Schemas are identical")
-                                Messages.showInfoMessage(
-                                    project,
-                                    "Schemas are identical. No differences found.",
-                                    "Comparison Result",
-                                )
-                            } else {
-                                LOG.info("Showing comparison result dialog")
-                                showComparisonResult(project, resultText)
-                            }
-                        }
-                    }
-            } catch (e: Exception) {
-                LOG.error("Error comparing schemas", e)
-                ApplicationManager.getApplication().invokeLater {
-                    Messages.showErrorDialog(
-                        project,
-                        "Error comparing schemas: ${e.message}",
-                        "Comparison Error",
-                    )
-                }
+            showComparisonResultOnUiThread(project, diff)
+        } catch (e: Exception) {
+            LOG.error("Error comparing schemas", e)
+            ApplicationManager.getApplication().invokeLater {
+                Messages.showErrorDialog(
+                    project,
+                    "Error comparing schemas: ${e.message}",
+                    "Comparison Error",
+                )
+            }
+        }
+    }
+
+    private fun fetchSchemaFromConnection(connection: DriftLocatorProjectService.DatabaseConnection) =
+        PostgresConnectionManager
+            .getConnection(
+                host = connection.host,
+                port = connection.port,
+                database = connection.database,
+                username = connection.username,
+                password = connection.password,
+            ).use { conn ->
+                LOG.debug("Fetching schema: ${connection.schema} from ${connection.name}")
+                PostgresSchemaComparator.fetchSchema(conn, connection.schema)
+            }
+
+    private fun showComparisonResultOnUiThread(project: Project, diff: com.github.yamert89.core.SchemaDiff) {
+        val resultText = DiffExporter.toText(diff)
+        ApplicationManager.getApplication().invokeLater {
+            if (diff.added.isEmpty() && diff.removed.isEmpty() && diff.modified.isEmpty()) {
+                LOG.info("Schemas are identical")
+                Messages.showInfoMessage(
+                    project,
+                    "Schemas are identical. No differences found.",
+                    "Comparison Result",
+                )
+            } else {
+                LOG.info("Showing comparison result dialog")
+                showComparisonResult(project, resultText)
             }
         }
     }
@@ -126,6 +191,17 @@ class DriftLocatorAction : AnAction() {
     private fun showComparisonResult(project: Project, resultText: String) {
         val dialog = ComparisonResultDialog(project, resultText)
         dialog.show()
+    }
+
+    private fun getToolWindowPanel(project: Project): DriftLocatorToolWindowPanel? {
+        val toolWindow =
+            com.intellij.openapi.wm.ToolWindowManager
+                .getInstance(project)
+                .getToolWindow("DriftLocator")
+        return toolWindow
+            ?.contentManager
+            ?.getContent(0)
+            ?.component as? DriftLocatorToolWindowPanel
     }
 }
 
@@ -146,12 +222,13 @@ class AddConnectionAction : AnAction() {
                     database = dialog.getDatabase(),
                     username = dialog.getUsername(),
                     password = dialog.getPassword(),
+                    schema = dialog.getSchema(),
                 )
             val passwordStatus = if (connection.password.isNullOrEmpty()) "not set" else "set"
             LOG.info(
                 "Adding connection '${connection.name}' " +
                     "(${connection.host}:${connection.port}/${connection.database}, " +
-                    "username=${connection.username}, password=$passwordStatus)",
+                    "schema=${connection.schema}, username=${connection.username}, password=$passwordStatus)",
             )
 
             service.addConnection(connection)
