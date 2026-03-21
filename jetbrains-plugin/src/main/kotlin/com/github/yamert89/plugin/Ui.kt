@@ -6,11 +6,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
-import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.*
-import java.awt.Dimension
 import javax.swing.JComponent
 import javax.swing.JPasswordField
 import javax.swing.JTextField
@@ -117,27 +114,4 @@ class AddConnectionDialog(private val project: Project) : DialogWrapper(project)
     companion object {
         private const val DEFAULT_POSTGRES_PORT = 5432
     }
-}
-
-class ComparisonResultDialog(private val project: Project, private val resultText: String) : DialogWrapper(project) {
-    init {
-        init()
-        title = "Schema Comparison Result"
-    }
-
-    override fun createCenterPanel(): JComponent {
-        val textArea = JBTextArea(resultText)
-        textArea.isEditable = false
-        textArea.lineWrap = true
-        textArea.wrapStyleWord = true
-        textArea.rows = 30
-        textArea.columns = 80
-
-        val scrollPane = JBScrollPane(textArea)
-        scrollPane.preferredSize = Dimension(800, 600)
-
-        return scrollPane
-    }
-
-    override fun createActions() = arrayOf(okAction)
 }

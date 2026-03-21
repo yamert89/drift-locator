@@ -82,4 +82,58 @@ internal class DiffExporterTest {
         val content = file.toFile().readText()
         assertTrue(content.isNotEmpty())
     }
+
+    @Test
+    fun `toText with schema exports sorted objects`() {
+        val objects =
+            listOf(
+                MockObject("zebra", "TABLE"),
+                MockObject("alpha", "TABLE"),
+                MockObject("middle", "VIEW"),
+            )
+        val schema = DatabaseSchema(objects)
+        val text = DiffExporter.toText(schema)
+
+        assertTrue(text.contains("Database Schema"))
+        assertTrue(text.contains("Total objects: 3"))
+        assertTrue(text.contains("[TABLE] alpha"))
+        assertTrue(text.contains("[VIEW] middle"))
+        assertTrue(text.contains("[TABLE] zebra"))
+
+        // Check alphabetical ordering
+        val alphaIndex = text.indexOf("[TABLE] alpha")
+        val middleIndex = text.indexOf("[VIEW] middle")
+        val zebraIndex = text.indexOf("[TABLE] zebra")
+        assertTrue(alphaIndex < middleIndex, "alpha should come before middle")
+        assertTrue(middleIndex < zebraIndex, "middle should come before zebra")
+    }
+
+    @Test
+    fun `toText with schema exports children sorted`() {
+        val childObjects =
+            listOf(
+                MockObject("z_col", "COLUMN"),
+                MockObject("a_col", "COLUMN"),
+                MockObject("m_col", "COLUMN"),
+            )
+        val schema = DatabaseSchema(listOf(MockObject("table1", "TABLE", childObjects)))
+        val text = DiffExporter.toText(schema)
+
+        val aIndex = text.indexOf("[COLUMN] a_col")
+        val mIndex = text.indexOf("[COLUMN] m_col")
+        val zIndex = text.indexOf("[COLUMN] z_col")
+        assertTrue(aIndex < mIndex, "a_col should come before m_col")
+        assertTrue(mIndex < zIndex, "m_col should come before z_col")
+    }
+
+    @Test
+    fun `exportSchemaToFile creates file`() {
+        val schema = DatabaseSchema(emptyList())
+        val file = tempDir.resolve("schema.txt")
+        DiffExporter.exportToFile(schema, file)
+        assertTrue(file.toFile().exists())
+        val content = file.toFile().readText()
+        assertTrue(content.isNotEmpty())
+        assertTrue(content.contains("Database Schema"))
+    }
 }

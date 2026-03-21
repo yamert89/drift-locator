@@ -1,14 +1,21 @@
 package com.github.yamert89.plugin
 
+import com.github.yamert89.core.DatabaseSchema
 import com.github.yamert89.core.DiffExporter
 import com.github.yamert89.postgresql.PostgresConnectionManager
 import com.github.yamert89.postgresql.PostgresSchemaComparator
+import com.intellij.diff.DiffContentFactory
+import com.intellij.diff.DiffManager
+import com.intellij.diff.requests.SimpleDiffRequest
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.vfs.VfsUtil
+import java.io.File
 
 private val LOG = Logger.getInstance("DriftLocator.Actions")
 
@@ -145,7 +152,7 @@ class CompareConnectionsAction : AnAction() {
                     "removed: ${diff.removed.size}, modified: ${diff.modified.size}",
             )
 
-            showComparisonResultOnUiThread(project, diff)
+            showComparisonResultOnUiThread(project, sourceSchema, targetSchema, sourceConnection, targetConnection)
         } catch (e: Exception) {
             LOG.error("Error comparing schemas", e)
             ApplicationManager.getApplication().invokeLater {
@@ -171,26 +178,74 @@ class CompareConnectionsAction : AnAction() {
                 PostgresSchemaComparator.fetchSchema(conn, connection.schema)
             }
 
-    private fun showComparisonResultOnUiThread(project: Project, diff: com.github.yamert89.core.SchemaDiff) {
-        val resultText = DiffExporter.toText(diff)
+    private fun showComparisonResultOnUiThread(
+        project: Project,
+        sourceSchema: DatabaseSchema,
+        targetSchema: DatabaseSchema,
+        sourceConnection: DriftLocatorProjectService.DatabaseConnection,
+        targetConnection: DriftLocatorProjectService.DatabaseConnection,
+    ) {
         ApplicationManager.getApplication().invokeLater {
-            if (diff.added.isEmpty() && diff.removed.isEmpty() && diff.modified.isEmpty()) {
-                LOG.info("Schemas are identical")
-                Messages.showInfoMessage(
-                    project,
-                    "Schemas are identical. No differences found.",
-                    "Comparison Result",
-                )
-            } else {
-                LOG.info("Showing comparison result dialog")
-                showComparisonResult(project, resultText)
-            }
+            LOG.info("Opening diff viewer for schema comparison")
+            showDiffViewer(project, sourceSchema, targetSchema, sourceConnection, targetConnection)
         }
     }
 
-    private fun showComparisonResult(project: Project, resultText: String) {
-        val dialog = ComparisonResultDialog(project, resultText)
-        dialog.show()
+    private fun showDiffViewer(
+        project: Project,
+        sourceSchema: DatabaseSchema,
+        targetSchema: DatabaseSchema,
+        sourceConnection: DriftLocatorProjectService.DatabaseConnection,
+        targetConnection: DriftLocatorProjectService.DatabaseConnection,
+    ) {
+        // Create temporary files with schema content
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "drift-locator")
+        tempDir.mkdirs()
+
+        val sourceFileName = "${sourceConnection.name}_${sourceConnection.schema}.txt"
+        val targetFileName = "${targetConnection.name}_${targetConnection.schema}.txt"
+
+        val sourceFile = File(tempDir, sourceFileName)
+        val targetFile = File(tempDir, targetFileName)
+
+        // Write schema content to files
+        sourceFile.writeText(DiffExporter.toText(sourceSchema))
+        targetFile.writeText(DiffExporter.toText(targetSchema))
+
+        // Refresh virtual files
+        val sourceVFile = VfsUtil.findFileByIoFile(sourceFile, true) ?: VfsUtil.findFileByIoFile(sourceFile, false)
+        val targetVFile = VfsUtil.findFileByIoFile(targetFile, true) ?: VfsUtil.findFileByIoFile(targetFile, false)
+
+        if (sourceVFile == null || targetVFile == null) {
+            LOG.error("Failed to create virtual files for diff viewer")
+            Messages.showErrorDialog(project, "Failed to create temporary files for comparison", "Error")
+            return
+        }
+
+        // Refresh to ensure content is loaded
+        sourceVFile.refresh(false, false)
+        targetVFile.refresh(false, false)
+
+        // Open files in editor first (so they appear in recent files and can be compared)
+        FileEditorManager.getInstance(project).openFile(sourceVFile, false)
+        FileEditorManager.getInstance(project).openFile(targetVFile, false)
+
+        // Create diff content using the file content
+        val contentFactory = DiffContentFactory.getInstance()
+        val sourceContent = contentFactory.create(project, sourceVFile)
+        val targetContent = contentFactory.create(project, targetVFile)
+
+        // Create and show diff request
+        val diffRequest =
+            SimpleDiffRequest(
+                "Schema Comparison: ${sourceConnection.name} vs ${targetConnection.name}",
+                sourceContent,
+                targetContent,
+                "${sourceConnection.name} (${sourceConnection.schema})",
+                "${targetConnection.name} (${targetConnection.schema})",
+            )
+
+        DiffManager.getInstance().showDiff(project, diffRequest)
     }
 
     private fun getToolWindowPanel(project: Project): DriftLocatorToolWindowPanel? {
