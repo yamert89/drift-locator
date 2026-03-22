@@ -3,6 +3,7 @@ package com.github.yamert89.postgresql
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.sql.Connection
 import java.sql.DriverManager
+import java.sql.SQLException
 
 private val logger = KotlinLogging.logger {}
 
@@ -52,7 +53,7 @@ object PostgresConnectionManager {
                 }
             logger.debug { "Connection created successfully" }
             conn
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             logger.error(e) { "Failed to create connection to $url: ${e.message}" }
             throw e
         }

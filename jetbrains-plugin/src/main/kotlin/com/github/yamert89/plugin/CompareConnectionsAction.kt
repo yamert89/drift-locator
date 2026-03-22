@@ -17,6 +17,7 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.wm.ToolWindowManager
 import java.io.File
+import java.sql.SQLException
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -112,7 +113,7 @@ class CompareConnectionsAction : AnAction() {
             )
 
             showComparisonResultOnUiThread(project, sourceSchema, targetSchema, sourceConnection, targetConnection)
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             log.error("Error comparing schemas", e)
             ApplicationManager.getApplication().invokeLater {
                 Messages.showErrorDialog(

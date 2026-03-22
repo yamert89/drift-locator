@@ -5,6 +5,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import java.sql.SQLException
 
 private val LOG = Logger.getInstance("DriftLocator.ConnectionValidation")
 
@@ -40,7 +41,7 @@ fun validateConnectionInBackground(
                     username = connection.username,
                     password = connection.password,
                 )
-            } catch (e: Exception) {
+            } catch (e: SQLException) {
                 LOG.error("Connection validation threw exception for '${connection.name}'", e)
                 false
             }

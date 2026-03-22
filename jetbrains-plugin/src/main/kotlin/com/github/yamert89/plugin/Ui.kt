@@ -4,17 +4,16 @@ package com.github.yamert89.plugin
 
 import com.github.yamert89.core.Defaults
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.components.JBTextField
-import com.intellij.ui.dsl.builder.*
-import com.intellij.ui.layout.ValidationInfoBuilder
+import com.intellij.ui.dsl.builder.Cell
+import com.intellij.ui.dsl.builder.columns
+import com.intellij.ui.dsl.builder.panel
 import javax.swing.JComponent
 import javax.swing.JPasswordField
 import javax.swing.JTextField
-import javax.swing.text.JTextComponent
 
 class ConnectionSchemaDialog(
     project: Project,
@@ -67,6 +66,7 @@ class AddConnectionDialog(project: Project, defaults: Defaults) : DialogWrapper(
 
     companion object {
         const val REQUIRED = "Field must be not empty"
+        const val COLUMN_SIZE = 15
     }
 
     @Suppress("Unchecked_cast")
@@ -81,17 +81,17 @@ class AddConnectionDialog(project: Project, defaults: Defaults) : DialogWrapper(
         panel {
             row("Connection Name:") {
                 cell(nameField)
-                    .columns(15)
+                    .columns(COLUMN_SIZE)
                     .required()
             }
             row("Host:") {
                 cell(hostField)
-                    .columns(15)
+                    .columns(COLUMN_SIZE)
                     .required()
             }
             row("Port:") {
                 cell(portField)
-                    .columns(15)
+                    .columns(COLUMN_SIZE)
                     .validationOnApply {
                         runCatching { it.text.toInt() }
                             .fold(
@@ -102,22 +102,22 @@ class AddConnectionDialog(project: Project, defaults: Defaults) : DialogWrapper(
             }
             row("Database:") {
                 cell(databaseField)
-                    .columns(15)
+                    .columns(COLUMN_SIZE)
                     .required()
             }
             row("Schema:") {
                 cell(schemaField)
-                    .columns(15)
+                    .columns(COLUMN_SIZE)
                     .required()
             }
             row("Username:") {
                 cell(usernameField)
-                    .columns(15)
+                    .columns(COLUMN_SIZE)
                     .required()
             }
             row("Password:") {
                 cell(passwordField)
-                    .columns(15)
+                    .columns(COLUMN_SIZE)
             }
         }
 

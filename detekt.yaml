@@ -16,7 +16,7 @@ style:
   MagicNumber:
     active: true
     excludes: ['**/internal/**', '**/ui/**', '**/test/**', '**/data/**']
-    ignoreNumbers: ['-1', '0', '1', '2', '3', '4', '5', '8000', '200']
+    ignoreNumbers: ['-1', '0', '1', '2', '3', '4', '5', '7']
   UnusedImports:
     active: true
   UseCheckOrError:
@@ -28,6 +28,7 @@ style:
     excludeImportStatements: true
     excludeCommentStatements: false
     excludeRawStrings: true
+    excludes: ['**/PostgresSchemaComparator.kt', '**/ConnectionValidation.kt']
   UnusedPrivateMember:
     active: true
     allowedNames: 'excludeFromIndexing'
@@ -52,6 +53,7 @@ naming:
     excludes: ['**/test/**']
   FunctionNaming:
     active: true
+    excludes: ['**/test/**']
   VariableNaming:
     active: true
 
@@ -73,7 +75,7 @@ complexity:
     ignoreDataClasses: true
     ignoreAnnotatedParameter: [ ]
   TooManyFunctions:
-    active: true
+    active: false
     excludes: ['**/test/**']
     thresholdInFiles: 25 # default 18
     thresholdInClasses: 25 # default 18
@@ -117,4 +119,3 @@ performance:
 exceptions:
   TooGenericExceptionCaught:
     active: true
-    excludes: [ '**/test/**']

@@ -7,9 +7,9 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
+import java.io.IOException
+import java.util.concurrent.*
 
 @Service(Service.Level.PROJECT)
 class DriftLocatorProjectService(private val project: Project) {
@@ -101,7 +101,7 @@ class DriftLocatorProjectService(private val project: Project) {
             val connectionsList: List<DatabaseConnection> = connections.values.toList()
             val jsonString = json.encodeToString<List<DatabaseConnection>>(connectionsList)
             getConnectionsFile().writeText(jsonString)
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             LOG.warn("Failed to save connections: ${e.message}")
         }
     }
@@ -116,7 +116,7 @@ class DriftLocatorProjectService(private val project: Project) {
                 connectionsList.forEach { connections[it.id] = it }
                 LOG.info("Loaded ${connections.size} connections from disk")
             }
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             LOG.warn("Failed to load connections: ${e.message}")
         }
     }
