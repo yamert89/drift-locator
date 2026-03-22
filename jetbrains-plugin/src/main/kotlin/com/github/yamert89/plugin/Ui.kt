@@ -2,20 +2,24 @@
 
 package com.github.yamert89.plugin
 
+import com.github.yamert89.core.Defaults
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.*
+import com.intellij.ui.layout.ValidationInfoBuilder
 import javax.swing.JComponent
 import javax.swing.JPasswordField
 import javax.swing.JTextField
+import javax.swing.text.JTextComponent
 
 class ConnectionSchemaDialog(
-    private val project: Project,
+    project: Project,
     private val service: DriftLocatorProjectService,
-    private val connectionId: String,
+    connectionId: String,
 ) : DialogWrapper(project) {
     private val schemaField = JBTextField()
     private val connectionNameLabel: String
@@ -23,7 +27,7 @@ class ConnectionSchemaDialog(
     init {
         val connection = service.connections[connectionId]
         connectionNameLabel = connection?.name ?: connectionId
-        schemaField.text = connection?.schema ?: DriftLocatorProjectService.DEFAULT_SCHEMA_NAME
+        schemaField.text = connection?.schema
         init()
         title = "Schema for '$connectionNameLabel'"
     }
@@ -47,46 +51,69 @@ class ConnectionSchemaDialog(
     fun getSchemaName(): String = schemaField.text.trim()
 }
 
-class AddConnectionDialog(private val project: Project) : DialogWrapper(project) {
+class AddConnectionDialog(project: Project, defaults: Defaults) : DialogWrapper(project) {
     private val nameField = JTextField()
-    private val hostField = JTextField()
-    private val portField = JTextField()
-    private val databaseField = JTextField()
-    private val usernameField = JTextField()
+    private val hostField = JTextField(defaults.host)
+    private val portField = JTextField(defaults.port.toString())
+    private val databaseField = JTextField(defaults.database)
+    private val usernameField = JTextField(defaults.username)
     private val passwordField = JPasswordField()
-    private val schemaField = JTextField(DriftLocatorProjectService.DEFAULT_SCHEMA_NAME)
+    private val schemaField = JTextField(defaults.schema)
 
     init {
         init()
         title = "Add Database Connection"
     }
 
+    companion object {
+        const val REQUIRED = "Field must be not empty"
+    }
+
+    @Suppress("Unchecked_cast")
+    private fun <T: JComponent> Cell<T>.required() {
+        assert(this.component is JTextField)
+        this as Cell<JTextField>
+        this.validationOnApply { if (it.text.isEmpty()) ValidationInfo(REQUIRED) else null }
+    }
+
+
     override fun createCenterPanel(): JComponent =
         panel {
             row("Connection Name:") {
                 cell(nameField)
                     .columns(15)
+                    .required()
             }
             row("Host:") {
                 cell(hostField)
                     .columns(15)
+                    .required()
             }
             row("Port:") {
                 cell(portField)
                     .columns(15)
+                    .validationOnApply {
+                        runCatching { it.text.toInt() }
+                            .fold(
+                                onSuccess = { null },
+                                onFailure = { ValidationInfo("Only integers allowed") }
+                            )
+                    }
             }
             row("Database:") {
                 cell(databaseField)
                     .columns(15)
+                    .required()
             }
             row("Schema:") {
                 cell(schemaField)
                     .columns(15)
-                    .comment("Database schema to compare (default: 'public')")
+                    .required()
             }
             row("Username:") {
                 cell(usernameField)
                     .columns(15)
+                    .required()
             }
             row("Password:") {
                 cell(passwordField)
@@ -98,11 +125,11 @@ class AddConnectionDialog(private val project: Project) : DialogWrapper(project)
 
     fun getHost(): String = hostField.text
 
-    fun getPort(): Int = portField.text.toIntOrNull() ?: DEFAULT_POSTGRES_PORT
+    fun getPort(): Int = portField.text.toInt()
 
     fun getDatabase(): String = databaseField.text
 
-    fun getSchema(): String = schemaField.text.ifEmpty { DriftLocatorProjectService.DEFAULT_SCHEMA_NAME }
+    fun getSchema(): String = schemaField.text
 
     fun getUsername(): String = usernameField.text
 
@@ -111,7 +138,4 @@ class AddConnectionDialog(private val project: Project) : DialogWrapper(project)
         return password.ifEmpty { null }
     }
 
-    companion object {
-        private const val DEFAULT_POSTGRES_PORT = 5432
-    }
 }

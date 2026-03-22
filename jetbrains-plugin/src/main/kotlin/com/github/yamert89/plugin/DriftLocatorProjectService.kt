@@ -1,11 +1,13 @@
 package com.github.yamert89.plugin
 
+import com.github.yamert89.core.DatabaseMeta
+import com.github.yamert89.core.Defaults
+import com.github.yamert89.postgresql.PgMeta
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -13,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
 class DriftLocatorProjectService(private val project: Project) {
     val connections = ConcurrentHashMap<String, DatabaseConnection>()
     private val connectionChangeListeners = mutableListOf<() -> Unit>()
+    private val databaseMeta: DatabaseMeta = PgMeta()
 
     private val json =
         Json {
@@ -22,21 +25,6 @@ class DriftLocatorProjectService(private val project: Project) {
 
     init {
         loadConnections()
-    }
-
-    @Serializable
-    data class DatabaseConnection(
-        val id: String,
-        val name: String,
-        val host: String,
-        val port: Int,
-        val database: String,
-        val username: String,
-        val password: String? = null,
-        val schema: String = DEFAULT_SCHEMA_NAME,
-    ) {
-        val url: String
-            get() = "jdbc:postgresql://$host:$port/$database"
     }
 
     /**
@@ -104,12 +92,14 @@ class DriftLocatorProjectService(private val project: Project) {
         return systemDir
     }
 
+    fun getDefaults(): Defaults = databaseMeta.getDefaults()
+
     private fun getConnectionsFile(): File = File(getSystemDir(), "connections.json")
 
     private fun saveConnections() {
         try {
-            val connectionsList = connections.values.toList()
-            val jsonString = json.encodeToString(connectionsList)
+            val connectionsList: List<DatabaseConnection> = connections.values.toList()
+            val jsonString = json.encodeToString<List<DatabaseConnection>>(connectionsList)
             getConnectionsFile().writeText(jsonString)
         } catch (e: Exception) {
             LOG.warn("Failed to save connections: ${e.message}")
@@ -134,9 +124,9 @@ class DriftLocatorProjectService(private val project: Project) {
     companion object {
         fun getInstance(project: Project): DriftLocatorProjectService = project.service<DriftLocatorProjectService>()
 
-        const val DEFAULT_SCHEMA_NAME = "public"
         private val LOG =
             com.intellij.openapi.diagnostic.Logger
                 .getInstance(DriftLocatorProjectService::class.java)
     }
 }
+

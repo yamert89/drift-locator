@@ -20,7 +20,7 @@ private val LOG = Logger.getInstance("DriftLocator.ConnectionValidation")
  */
 fun validateConnectionInBackground(
     project: Project,
-    connection: DriftLocatorProjectService.DatabaseConnection,
+    connection: DatabaseConnection,
     service: DriftLocatorProjectService,
     onSuccess: (() -> Unit)? = null,
     onFailure: (() -> Unit)? = null,

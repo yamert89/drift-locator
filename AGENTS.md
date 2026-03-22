@@ -69,7 +69,6 @@ IntelliJ IDEA plugin providing UI for schema comparison:
 - `DriftLocatorToolWindowFactory` - Creates the tool window
 - `DriftLocatorProjectService` - Project-level service for managing connections
 - `DriftLocatorApplicationService` - Application-level service
-- `Actions.kt` - Action implementations (Add/Delete/Compare)
 - `Ui.kt` - Dialog UIs (AddConnectionDialog, SchemaComparisonDialog)
 - `ConnectionValidation.kt` - Background connection validation
 
@@ -199,7 +198,7 @@ Environment variable required:
 5. Add dependency to `jetbrains-plugin` if UI integration needed
 
 ### Adding Plugin Features
-1. Add actions in `Actions.kt`
+1. Add actions
 2. Register actions in `plugin.xml`
 3. Create dialogs in `Ui.kt` if needed
 4. Update services in `DriftLocatorProjectService.kt` for state management
