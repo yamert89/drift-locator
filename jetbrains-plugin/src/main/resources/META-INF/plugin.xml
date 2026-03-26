@@ -25,19 +25,19 @@
             <add-to-group group-id="MainMenu" anchor="last"/>
             <action id="com.github.yamert89.plugin.AddConnectionAction"
                     class="com.github.yamert89.plugin.AddConnectionAction" text="Add Connection"
-                    icon="AllIcons.Actions.AddFile"
+                    icon="/icons/new.svg"
                     description="Add connection"/>
             <action id="com.github.yamert89.plugin.EditConnectionSchemaAction"
                     class="com.github.yamert89.plugin.EditConnectionSchemaAction" text="Set Schema"
-                    icon="AllIcons.Actions.Edit"
+                    icon="/icons/edit.svg"
                     description="Edit schema for selected connection"/>
             <action id="com.github.yamert89.plugin.CompareConnectionsAction"
                     class="com.github.yamert89.plugin.CompareConnectionsAction" text="Compare"
-                    icon="AllIcons.Actions.Diff"
+                    icon="/icons/compare.svg"
                     description="Compare schemas between two selected connections"/>
             <action id="com.github.yamert89.plugin.DeleteConnectionAction"
                     class="com.github.yamert89.plugin.DeleteConnectionAction" text="Delete"
-                    icon="AllIcons.Actions.DeleteTag"
+                    icon="/icons/remove.svg"
                     description="Delete connection"/>
         </group>
 

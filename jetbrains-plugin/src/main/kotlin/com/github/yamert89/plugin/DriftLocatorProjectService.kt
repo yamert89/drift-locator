@@ -6,9 +6,11 @@ import com.github.yamert89.postgresql.PgMeta
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.IOException
+import kotlinx.serialization.encodeToString
 import java.util.concurrent.*
 
 @Service(Service.Level.PROJECT)
@@ -99,7 +101,10 @@ class DriftLocatorProjectService(private val project: Project) {
     private fun saveConnections() {
         try {
             val connectionsList: List<DatabaseConnection> = connections.values.toList()
-            val jsonString = json.encodeToString<List<DatabaseConnection>>(connectionsList)
+            val jsonString = json.encodeToString(
+                ListSerializer(DatabaseConnection.serializer()),
+                connectionsList
+            )
             getConnectionsFile().writeText(jsonString)
         } catch (e: IOException) {
             LOG.warn("Failed to save connections: ${e.message}")
