@@ -1,7 +1,8 @@
 @file:Suppress("ktlint:standard:no-wildcard-imports", "WildcardImport")
 
-package com.github.yamert89.plugin
+package com.github.yamert89.plugin.ui
 
+import com.github.yamert89.plugin.DriftLocatorProjectService
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -25,7 +26,7 @@ class DriftLocatorToolWindowFactory : ToolWindowFactory {
 }
 
 class DriftLocatorToolWindowPanel(private val project: Project) : JPanel(BorderLayout()) {
-    private val service = DriftLocatorProjectService.getInstance(project)
+    private val service = DriftLocatorProjectService.Companion.getInstance(project)
     private val connectionList = JBList<String>()
     private val listModel = DefaultListModel<String>()
 

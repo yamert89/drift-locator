@@ -11,7 +11,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import java.io.File
 import java.io.IOException
-import kotlinx.serialization.encodeToString
 import java.util.concurrent.*
 
 @Service(Service.Level.PROJECT)
@@ -54,18 +53,6 @@ class DriftLocatorProjectService(private val project: Project) {
             notifyConnectionChanged()
         }
         return removed
-    }
-
-    /**
-     * Updates the schema for a connection and saves to disk.
-     */
-    fun updateConnectionSchema(id: String, schema: String): DatabaseConnection? {
-        val existing = connections[id] ?: return null
-        val updated = existing.copy(schema = schema)
-        connections[id] = updated
-        saveConnections()
-        notifyConnectionChanged()
-        return updated
     }
 
     /**

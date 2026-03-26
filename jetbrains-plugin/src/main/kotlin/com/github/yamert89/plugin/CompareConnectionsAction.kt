@@ -2,6 +2,7 @@ package com.github.yamert89.plugin
 
 import com.github.yamert89.core.DatabaseSchema
 import com.github.yamert89.core.DiffExporter
+import com.github.yamert89.plugin.ui.DriftLocatorToolWindowPanel
 import com.github.yamert89.postgresql.PostgresConnectionManager
 import com.github.yamert89.postgresql.PostgresSchemaComparator
 import com.intellij.diff.DiffContentFactory

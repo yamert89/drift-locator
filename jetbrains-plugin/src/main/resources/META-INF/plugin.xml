@@ -17,7 +17,7 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="DriftLocator" anchor="bottom" factoryClass="com.github.yamert89.plugin.DriftLocatorToolWindowFactory"/>
+        <toolWindow id="DriftLocator" anchor="bottom" factoryClass="com.github.yamert89.plugin.ui.DriftLocatorToolWindowFactory"/>
     </extensions>
 
     <actions>

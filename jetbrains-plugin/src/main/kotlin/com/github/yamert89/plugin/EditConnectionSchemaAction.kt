@@ -1,5 +1,7 @@
 package com.github.yamert89.plugin
 
+import com.github.yamert89.plugin.ui.DriftLocatorToolWindowPanel
+import com.github.yamert89.plugin.ui.EditConnectionDialog
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.diagnostic.Logger
