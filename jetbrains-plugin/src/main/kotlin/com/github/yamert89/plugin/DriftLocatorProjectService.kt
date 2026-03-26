@@ -8,6 +8,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 import java.io.File
 import java.io.IOException
 import kotlinx.serialization.encodeToString
@@ -16,6 +17,7 @@ import java.util.concurrent.*
 @Service(Service.Level.PROJECT)
 class DriftLocatorProjectService(private val project: Project) {
     val connections = ConcurrentHashMap<String, DatabaseConnection>()
+    private var lastConnection: DatabaseConnection? = null
     private val connectionChangeListeners = mutableListOf<() -> Unit>()
     private val databaseMeta: DatabaseMeta = PgMeta()
 
@@ -27,6 +29,7 @@ class DriftLocatorProjectService(private val project: Project) {
 
     init {
         loadConnections()
+        loadLastConnection()
     }
 
     /**
@@ -34,7 +37,9 @@ class DriftLocatorProjectService(private val project: Project) {
      */
     fun addConnection(connection: DatabaseConnection) {
         connections[connection.id] = connection
+        lastConnection = connection
         saveConnections()
+        saveLastConnection()
         notifyConnectionChanged()
     }
 
@@ -96,13 +101,17 @@ class DriftLocatorProjectService(private val project: Project) {
 
     fun getDefaults(): Defaults = databaseMeta.getDefaults()
 
+    fun getLastConnection(): DatabaseConnection? = lastConnection
+
     private fun getConnectionsFile(): File = File(getSystemDir(), "connections.json")
+
+    private fun getLastConnectionFile(): File = File(getSystemDir(), "last-connection.json")
 
     private fun saveConnections() {
         try {
             val connectionsList: List<DatabaseConnection> = connections.values.toList()
             val jsonString = json.encodeToString(
-                ListSerializer(DatabaseConnection.serializer()),
+                ListSerializer(serializer<DatabaseConnection>()),
                 connectionsList
             )
             getConnectionsFile().writeText(jsonString)
@@ -123,6 +132,32 @@ class DriftLocatorProjectService(private val project: Project) {
             }
         } catch (e: IOException) {
             LOG.warn("Failed to load connections: ${e.message}")
+        }
+    }
+
+    private fun loadLastConnection() {
+        try {
+            val file = getLastConnectionFile()
+            if (file.exists()) {
+                val jsonString = file.readText()
+                lastConnection = json.decodeFromString(serializer<DatabaseConnection>(), jsonString)
+            }
+        } catch (e: IOException) {
+            LOG.warn("Failed to load last connection: ${e.message}")
+        }
+    }
+
+    private fun saveLastConnection() {
+        try {
+            val last = lastConnection
+            if (last != null) {
+                val jsonString = json.encodeToString(serializer<DatabaseConnection>(), last)
+                getLastConnectionFile().writeText(jsonString)
+            } else {
+                getLastConnectionFile().delete()
+            }
+        } catch (e: IOException) {
+            LOG.warn("Failed to save last connection: ${e.message}")
         }
     }
 

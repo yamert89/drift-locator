@@ -50,14 +50,18 @@ class ConnectionSchemaDialog(
     fun getSchemaName(): String = schemaField.text.trim()
 }
 
-class AddConnectionDialog(project: Project, defaults: Defaults) : DialogWrapper(project) {
+class AddConnectionDialog(
+    project: Project,
+    defaults: Defaults,
+    lastConnection: DatabaseConnection? = null
+) : DialogWrapper(project) {
     private val nameField = JTextField()
-    private val hostField = JTextField(defaults.host)
-    private val portField = JTextField(defaults.port.toString())
-    private val databaseField = JTextField(defaults.database)
-    private val usernameField = JTextField(defaults.username)
+    private val hostField = JTextField(lastConnection?.host ?: defaults.host)
+    private val portField = JTextField((lastConnection?.port ?: defaults.port).toString())
+    private val databaseField = JTextField(lastConnection?.database ?: defaults.database)
+    private val usernameField = JTextField(lastConnection?.username ?: defaults.username)
     private val passwordField = JPasswordField()
-    private val schemaField = JTextField(defaults.schema)
+    private val schemaField = JTextField(lastConnection?.schema ?: defaults.schema)
 
     init {
         init()

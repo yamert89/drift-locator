@@ -11,7 +11,7 @@ class AddConnectionAction : AnAction() {
         val project = e.project ?: return
         log.info("AddConnectionAction triggered")
         val service = DriftLocatorProjectService.getInstance(project)
-        val dialog = AddConnectionDialog(project, service.getDefaults())
+        val dialog = AddConnectionDialog(project, service.getDefaults(), service.getLastConnection())
         if (dialog.showAndGet()) {
 
             val connection =
