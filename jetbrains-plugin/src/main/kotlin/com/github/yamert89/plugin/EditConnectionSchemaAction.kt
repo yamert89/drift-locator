@@ -24,20 +24,43 @@ class EditConnectionSchemaAction : AnAction() {
             log.warn("Invalid number of connections selected: ${selectedConnections.size}")
             Messages.showErrorDialog(
                 project,
-                "Please select exactly one connection to edit its schema.",
+                "Please select exactly one connection to edit.",
                 "Selection Error",
             )
             return
         }
 
         val connectionId = selectedConnections[0]
-        val dialog = ConnectionSchemaDialog(project, service, connectionId)
+        val connection = service.connections[connectionId]
+        if (connection == null) {
+            log.warn("Connection '$connectionId' not found")
+            Messages.showErrorDialog(project, "Selected connection not found.", "Error")
+            return
+        }
+
+        val dialog = EditConnectionDialog(project, connection)
         if (dialog.showAndGet()) {
-            val schemaName = dialog.getSchemaName()
-            service.updateConnectionSchema(connectionId, schemaName)
-            log.info("Schema updated for connection '$connectionId' to: $schemaName")
+            val newConnection = DatabaseConnection(
+                id = dialog.getConnectionName(),
+                name = dialog.getConnectionName(),
+                host = dialog.getHost(),
+                port = dialog.getPort(),
+                database = dialog.getDatabase(),
+                username = dialog.getUsername(),
+                password = dialog.getPassword(),
+                schema = dialog.getSchema(),
+            )
+            try {
+                service.updateConnection(connectionId, newConnection)
+                log.info("Connection '$connectionId' updated to: ${newConnection.name} (${newConnection.host}:${newConnection.port})")
+                // Validate the updated connection in background
+                validateConnectionInBackground(project, newConnection, service)
+            } catch (e: IllegalArgumentException) {
+                log.warn("Failed to update connection: ${e.message}")
+                Messages.showErrorDialog(project, e.message, "Error")
+            }
         } else {
-            log.debug("Schema dialog cancelled")
+            log.debug("Edit dialog cancelled")
         }
     }
 

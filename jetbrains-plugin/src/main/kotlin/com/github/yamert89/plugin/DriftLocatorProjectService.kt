@@ -69,6 +69,32 @@ class DriftLocatorProjectService(private val project: Project) {
     }
 
     /**
+     * Updates a connection (all fields) and saves to disk.
+     * If the connection ID changes (name changed), the old entry is removed and a new one is added.
+     * @throws IllegalArgumentException if the new connection ID already exists (different from oldId)
+     */
+    fun updateConnection(oldId: String, newConnection: DatabaseConnection): DatabaseConnection? {
+        val existing = connections[oldId] ?: return null
+        // Check if new ID conflicts with another connection
+        if (oldId != newConnection.id && connections.containsKey(newConnection.id)) {
+            throw IllegalArgumentException("Connection with name '${newConnection.name}' already exists")
+        }
+        // Remove old entry if ID changed
+        if (oldId != newConnection.id) {
+            connections.remove(oldId)
+        }
+        connections[newConnection.id] = newConnection
+        // Update lastConnection if it was the old one
+        if (lastConnection?.id == oldId) {
+            lastConnection = newConnection
+            saveLastConnection()
+        }
+        saveConnections()
+        notifyConnectionChanged()
+        return newConnection
+    }
+
+    /**
      * Registers a listener to be called when connections change.
      */
     fun addConnectionChangeListener(listener: () -> Unit) {
