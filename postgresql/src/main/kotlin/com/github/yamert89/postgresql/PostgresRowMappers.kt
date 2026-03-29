@@ -79,3 +79,100 @@ fun Row.toPostgresSequence(): PostgresSequence =
         startValue = long("start_value"),
         increment = long("increment"),
     )
+
+/**
+ * Maps a database row to a [PostgresTrigger].
+ */
+fun Row.toPostgresTrigger(): PostgresTrigger =
+    PostgresTrigger(
+        schema = string("schema"),
+        pgObjectName = string("trigger_name"),
+        tableName = string("table_name"),
+        event = "", // TODO parse from definition
+        timing = "",
+        function = "",
+        definition = string("definition"),
+    )
+
+/**
+ * Maps a database row to a [PostgresMaterializedView].
+ */
+fun Row.toPostgresMaterializedView(): PostgresMaterializedView =
+    PostgresMaterializedView(
+        schema = string("schema"),
+        pgObjectName = string("matview_name"),
+        columns = emptyList(), // TODO fetch columns
+        definition = null,
+    )
+
+/**
+ * Maps a database row to a [PostgresEnumType].
+ */
+fun Row.toPostgresEnumType(): PostgresEnumType {
+    val values = array<String>("enum_values")?.toList() ?: emptyList()
+    return PostgresEnumType(
+        schema = string("schema"),
+        pgObjectName = string("enum_name"),
+        values = values,
+    )
+}
+
+/**
+ * Maps a database row to a [PostgresDomain].
+ */
+fun Row.toPostgresDomain(): PostgresDomain =
+    PostgresDomain(
+        schema = string("domain_schema"),
+        pgObjectName = string("domain_name"),
+        baseType = string("data_type"),
+        nullable = boolean("is_nullable"),
+        defaultValue = stringOrNull("domain_default"),
+        checkConstraint = stringOrNull("check_constraint"),
+    )
+
+/**
+ * Maps a database row to a [PostgresExtension].
+ */
+fun Row.toPostgresExtension(): PostgresExtension =
+    PostgresExtension(
+        schema = "", // extensions are not schema-bound
+        pgObjectName = string("extname"),
+        version = string("extversion"),
+    )
+
+/**
+ * Maps a database row to a [PostgresPolicy].
+ */
+fun Row.toPostgresPolicy(): PostgresPolicy {
+    val commandChar = string("command")
+    val command = when (commandChar) {
+        "*" -> "ALL"
+        "r" -> "SELECT"
+        "a" -> "INSERT"
+        "w" -> "UPDATE"
+        "d" -> "DELETE"
+        else -> commandChar
+    }
+    val roles = array<String>("roles")?.toList() ?: emptyList()
+    return PostgresPolicy(
+        schema = string("schema"),
+        pgObjectName = string("policy_name"),
+        tableName = string("table_name"),
+        command = command,
+        permissive = boolean("permissive"),
+        roles = roles,
+        usingExpression = stringOrNull("using_expr"),
+        withCheckExpression = stringOrNull("with_check_expr"),
+    )
+}
+
+/**
+ * Maps a database row to a [PostgresComment].
+ */
+fun Row.toPostgresComment(): PostgresComment =
+    PostgresComment(
+        objectType = string("object_type"),
+        objectSchema = string("schema"),
+        commentedObjectName = string("object_name"),
+        comment = string("comment"),
+    )
