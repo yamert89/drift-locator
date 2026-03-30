@@ -15,7 +15,7 @@ import javax.swing.JTextField
 class AddConnectionDialog(
     project: Project,
     defaults: Defaults,
-    lastConnection: DatabaseConnection? = null
+    lastConnection: DatabaseConnection? = null,
 ) : DialogWrapper(project) {
     private val nameField = JTextField()
     private val hostField = JTextField(lastConnection?.host ?: defaults.host)
@@ -36,12 +36,11 @@ class AddConnectionDialog(
     }
 
     @Suppress("unchecked_cast")
-    private fun <T: JComponent> Cell<T>.required() {
+    private fun <T : JComponent> Cell<T>.required() {
         assert(this.component is JTextField)
         this as Cell<JTextField>
         this.validationOnApply { if (it.text.isEmpty()) ValidationInfo(REQUIRED) else null }
     }
-
 
     override fun createCenterPanel(): JComponent =
         panel {
@@ -62,7 +61,7 @@ class AddConnectionDialog(
                         runCatching { it.text.toInt() }
                             .fold(
                                 onSuccess = { null },
-                                onFailure = { ValidationInfo("Only integers allowed") }
+                                onFailure = { ValidationInfo("Only integers allowed") },
                             )
                     }
             }
@@ -103,5 +102,4 @@ class AddConnectionDialog(
         val password = String(passwordField.password)
         return password.ifEmpty { null }
     }
-
 }

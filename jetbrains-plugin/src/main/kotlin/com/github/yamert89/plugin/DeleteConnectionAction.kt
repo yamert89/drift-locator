@@ -5,7 +5,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.ui.Messages
 
-
 class DeleteConnectionAction : AnAction() {
     private val log = Logger.getInstance("CompareConnectionsAction")
 

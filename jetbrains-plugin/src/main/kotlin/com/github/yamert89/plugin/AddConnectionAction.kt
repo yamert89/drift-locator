@@ -7,14 +7,13 @@ import com.intellij.openapi.diagnostic.Logger
 
 class AddConnectionAction : AnAction() {
     private val log = Logger.getInstance("CompareConnectionsAction")
-    
+
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         log.info("AddConnectionAction triggered")
         val service = DriftLocatorProjectService.getInstance(project)
         val dialog = AddConnectionDialog(project, service.getDefaults(), service.getLastConnection())
         if (dialog.showAndGet()) {
-
             val connection =
                 DatabaseConnection(
                     id = dialog.getConnectionName(),

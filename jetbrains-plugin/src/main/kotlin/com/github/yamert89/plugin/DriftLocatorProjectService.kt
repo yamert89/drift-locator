@@ -123,10 +123,11 @@ class DriftLocatorProjectService(private val project: Project) {
     private fun saveConnections() {
         try {
             val connectionsList: List<DatabaseConnection> = connections.values.toList()
-            val jsonString = json.encodeToString(
-                ListSerializer(serializer<DatabaseConnection>()),
-                connectionsList
-            )
+            val jsonString =
+                json.encodeToString(
+                    ListSerializer(serializer<DatabaseConnection>()),
+                    connectionsList,
+                )
             getConnectionsFile().writeText(jsonString)
         } catch (e: IOException) {
             LOG.warn("Failed to save connections: ${e.message}")
@@ -182,4 +183,3 @@ class DriftLocatorProjectService(private val project: Project) {
                 .getInstance(DriftLocatorProjectService::class.java)
     }
 }
-

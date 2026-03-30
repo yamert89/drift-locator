@@ -50,7 +50,17 @@ class PostgresSchemaComparatorTest {
                 postgres.password,
             )
         val schema = PostgresSchemaComparator.fetchSchema(connection)
-        assertTrue(schema.objects.isEmpty())
+        // Filter out global objects (roles, tablespaces, etc.) to check schema-specific objects
+        val excludedTypes =
+            listOf(
+                "ROLE", "TABLESPACE", "PUBLICATION", "SUBSCRIPTION",
+                "SCHEMA", "EXTENSION", "AGGREGATE", "OPERATOR", "CAST", "FTS_CONFIGURATION",
+            )
+        val schemaObjects = schema.objects.filter { it.type !in excludedTypes }
+        assertTrue(
+            schemaObjects.isEmpty(),
+            "Expected no schema objects, but found: ${schema.objects.map { "${it.type}:${it.name}" }}",
+        )
         connection.close()
     }
 

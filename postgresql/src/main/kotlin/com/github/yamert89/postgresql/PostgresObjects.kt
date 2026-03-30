@@ -119,14 +119,17 @@ data class PostgresSequence(
 
 /**
  * Represents a PostgreSQL trigger.
+ * @param event Trigger event: INSERT, UPDATE, DELETE, or TRUNCATE
+ * @param timing Trigger timing: BEFORE, AFTER, or INSTEAD OF
+ * @param function Function to execute when trigger fires
  */
 data class PostgresTrigger(
     override val schema: String,
     override val pgObjectName: String,
     val tableName: String,
-    val event: String,  // INSERT, UPDATE, DELETE, TRUNCATE
-    val timing: String, // BEFORE, AFTER, INSTEAD OF
-    val function: String, // function to execute
+    val event: String,
+    val timing: String,
+    val function: String,
     val definition: String,
 ) : PostgresObject() {
     override val type: String = "TRIGGER"
@@ -174,25 +177,28 @@ data class PostgresDomain(
 }
 
 /**
- * Represents a PostgreSQL extension.
+ * Represents a PostgreSQL extension with its schema.
  */
 data class PostgresExtension(
-    override val schema: String,
-    override val pgObjectName: String,
+    val pgObjectName: String,
+    val schema: String,
     val version: String,
-) : PostgresObject() {
+) : DatabaseObject {
+    override val name: String = "$schema.$pgObjectName"
     override val type: String = "EXTENSION"
+    override val objectName: String = pgObjectName
     override val children: List<DatabaseObject> = emptyList()
 }
 
 /**
  * Represents a PostgreSQL rule.
+ * @param event Rule event: SELECT, INSERT, UPDATE, or DELETE
  */
 data class PostgresRule(
     override val schema: String,
     override val pgObjectName: String,
     val tableName: String,
-    val event: String, // SELECT, INSERT, UPDATE, DELETE
+    val event: String,
     val definition: String,
 ) : PostgresObject() {
     override val type: String = "RULE"
@@ -201,13 +207,15 @@ data class PostgresRule(
 
 /**
  * Represents a PostgreSQL row-level security policy.
+ * @param command Policy command: ALL, SELECT, INSERT, UPDATE, or DELETE
+ * @param permissive True for PERMISSIVE, false for RESTRICTIVE
  */
 data class PostgresPolicy(
     override val schema: String,
     override val pgObjectName: String,
     val tableName: String,
-    val command: String, // ALL, SELECT, INSERT, UPDATE, DELETE
-    val permissive: Boolean, // true for PERMISSIVE, false for RESTRICTIVE
+    val command: String,
+    val permissive: Boolean,
     val roles: List<String>,
     val usingExpression: String?,
     val withCheckExpression: String?,
@@ -222,10 +230,12 @@ data class PostgresPolicy(
 data class PostgresGrant(
     val grantor: String,
     val grantee: String,
-    val objectType: String, // TABLE, SEQUENCE, FUNCTION, etc.
+    /** Object type: TABLE, SEQUENCE, FUNCTION, etc. */
+    val objectType: String,
     val objectSchema: String,
     val targetObjectName: String,
-    val privilege: String, // SELECT, INSERT, UPDATE, DELETE, etc.
+    /** Privilege: SELECT, INSERT, UPDATE, DELETE, etc. */
+    val privilege: String,
     val isGrantable: Boolean,
 ) : DatabaseObject {
     override val name: String = "$grantor->$grantee:$objectType:$objectSchema.$targetObjectName:$privilege"
@@ -234,43 +244,46 @@ data class PostgresGrant(
 }
 
 /**
- * Represents a PostgreSQL tablespace.
+ * Represents a PostgreSQL tablespace (global object, not schema-bound).
  */
 data class PostgresTablespace(
-    override val schema: String,
-    override val pgObjectName: String,
+    val pgObjectName: String,
     val location: String,
     val options: Map<String, String>?,
-) : PostgresObject() {
+) : DatabaseObject {
+    override val name: String = pgObjectName
     override val type: String = "TABLESPACE"
+    override val objectName: String = pgObjectName
     override val children: List<DatabaseObject> = emptyList()
 }
 
 /**
- * Represents a PostgreSQL role (user or group).
+ * Represents a PostgreSQL role (user or group) - global object, not schema-bound.
  */
 data class PostgresRole(
-    override val schema: String,
-    override val pgObjectName: String,
+    val pgObjectName: String,
     val isSuperuser: Boolean,
     val canCreateDb: Boolean,
     val canCreateRole: Boolean,
     val canLogin: Boolean,
     val validUntil: String?,
-) : PostgresObject() {
+) : DatabaseObject {
+    override val name: String = pgObjectName
     override val type: String = "ROLE"
+    override val objectName: String = pgObjectName
     override val children: List<DatabaseObject> = emptyList()
 }
 
 /**
- * Represents a PostgreSQL schema (as an object).
+ * Represents a PostgreSQL schema (as an object) - stores only schema name without prefix.
  */
 data class PostgresSchemaObject(
-    override val schema: String,
-    override val pgObjectName: String,
+    val schemaName: String,
     val owner: String,
-) : PostgresObject() {
+) : DatabaseObject {
+    override val name: String = schemaName
     override val type: String = "SCHEMA"
+    override val objectName: String = schemaName
     override val children: List<DatabaseObject> = emptyList()
 }
 
@@ -289,30 +302,33 @@ data class PostgresForeignTable(
 }
 
 /**
- * Represents a PostgreSQL publication (for logical replication).
+ * Represents a PostgreSQL publication (for logical replication) - global object, not schema-bound.
  */
 data class PostgresPublication(
-    override val schema: String,
-    override val pgObjectName: String,
+    val pgObjectName: String,
     val tables: List<String>,
     val forAllTables: Boolean,
-    val publish: Set<String>, // insert, update, delete, truncate
-) : PostgresObject() {
+    /** Set of operations: insert, update, delete, truncate */
+    val publish: Set<String>,
+) : DatabaseObject {
+    override val name: String = pgObjectName
     override val type: String = "PUBLICATION"
+    override val objectName: String = pgObjectName
     override val children: List<DatabaseObject> = emptyList()
 }
 
 /**
- * Represents a PostgreSQL subscription (for logical replication).
+ * Represents a PostgreSQL subscription (for logical replication) - global object, not schema-bound.
  */
 data class PostgresSubscription(
-    override val schema: String,
-    override val pgObjectName: String,
+    val pgObjectName: String,
     val connection: String,
     val publicationNames: List<String>,
     val enabled: Boolean,
-) : PostgresObject() {
+) : DatabaseObject {
+    override val name: String = pgObjectName
     override val type: String = "SUBSCRIPTION"
+    override val objectName: String = pgObjectName
     override val children: List<DatabaseObject> = emptyList()
 }
 
@@ -383,7 +399,8 @@ data class PostgresCast(
     val sourceType: String,
     val targetType: String,
     val function: String?,
-    val context: String, // IMPLICIT, ASSIGNMENT, EXPLICIT
+    /** Cast context: IMPLICIT, ASSIGNMENT, or EXPLICIT */
+    val context: String,
 ) : DatabaseObject {
     override val name: String = "$sourceType->$targetType"
     override val type: String = "CAST"

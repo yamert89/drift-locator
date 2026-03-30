@@ -11,10 +11,7 @@ import javax.swing.JComponent
 import javax.swing.JPasswordField
 import javax.swing.JTextField
 
-class EditConnectionDialog(
-    project: Project,
-    private val connection: DatabaseConnection
-) : DialogWrapper(project) {
+class EditConnectionDialog(project: Project, private val connection: DatabaseConnection) : DialogWrapper(project) {
     private val originalId = connection.id
     private val nameField = JTextField(connection.name)
     private val hostField = JTextField(connection.host)
@@ -36,7 +33,7 @@ class EditConnectionDialog(
     }
 
     @Suppress("unchecked_cast")
-    private fun <T: JComponent> Cell<T>.required() {
+    private fun <T : JComponent> Cell<T>.required() {
         assert(this.component is JTextField)
         this as Cell<JTextField>
         this.validationOnApply { if (it.text.isEmpty()) ValidationInfo(REQUIRED) else null }
@@ -61,7 +58,7 @@ class EditConnectionDialog(
                         runCatching { it.text.toInt() }
                             .fold(
                                 onSuccess = { null },
-                                onFailure = { ValidationInfo("Only integers allowed") }
+                                onFailure = { ValidationInfo("Only integers allowed") },
                             )
                     }
             }

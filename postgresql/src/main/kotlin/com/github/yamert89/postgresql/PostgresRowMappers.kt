@@ -83,27 +83,37 @@ fun Row.toPostgresSequence(): PostgresSequence =
 /**
  * Maps a database row to a [PostgresTrigger].
  */
-fun Row.toPostgresTrigger(): PostgresTrigger =
-    PostgresTrigger(
+fun Row.toPostgresTrigger(): PostgresTrigger {
+    val def = string("definition")
+    // Parse trigger definition to extract timing, event, and function
+    // Example: CREATE TRIGGER name BEFORE INSERT ON table EXECUTE FUNCTION func()
+    val timing =
+        when {
+            def.contains(" BEFORE ", ignoreCase = true) -> "BEFORE"
+            def.contains(" AFTER ", ignoreCase = true) -> "AFTER"
+            def.contains(" INSTEAD OF ", ignoreCase = true) -> "INSTEAD OF"
+            else -> ""
+        }
+    val event =
+        when {
+            def.contains(" INSERT ", ignoreCase = true) -> "INSERT"
+            def.contains(" UPDATE ", ignoreCase = true) -> "UPDATE"
+            def.contains(" DELETE ", ignoreCase = true) -> "DELETE"
+            def.contains(" TRUNCATE ", ignoreCase = true) -> "TRUNCATE"
+            else -> ""
+        }
+    val functionRegex = "EXECUTE\\s+(?:FUNCTION|PROCEDURE)\\s+(\\w+)".toRegex(RegexOption.IGNORE_CASE)
+    val function = functionRegex.find(def)?.groupValues?.get(1) ?: ""
+    return PostgresTrigger(
         schema = string("schema"),
         pgObjectName = string("trigger_name"),
         tableName = string("table_name"),
-        event = "", // TODO parse from definition
-        timing = "",
-        function = "",
-        definition = string("definition"),
+        event = event,
+        timing = timing,
+        function = function,
+        definition = def,
     )
-
-/**
- * Maps a database row to a [PostgresMaterializedView].
- */
-fun Row.toPostgresMaterializedView(): PostgresMaterializedView =
-    PostgresMaterializedView(
-        schema = string("schema"),
-        pgObjectName = string("matview_name"),
-        columns = emptyList(), // TODO fetch columns
-        definition = null,
-    )
+}
 
 /**
  * Maps a database row to a [PostgresEnumType].
@@ -135,8 +145,8 @@ fun Row.toPostgresDomain(): PostgresDomain =
  */
 fun Row.toPostgresExtension(): PostgresExtension =
     PostgresExtension(
-        schema = "", // extensions are not schema-bound
         pgObjectName = string("extname"),
+        schema = string("extnamespace"),
         version = string("extversion"),
     )
 
@@ -145,14 +155,15 @@ fun Row.toPostgresExtension(): PostgresExtension =
  */
 fun Row.toPostgresPolicy(): PostgresPolicy {
     val commandChar = string("command")
-    val command = when (commandChar) {
-        "*" -> "ALL"
-        "r" -> "SELECT"
-        "a" -> "INSERT"
-        "w" -> "UPDATE"
-        "d" -> "DELETE"
-        else -> commandChar
-    }
+    val command =
+        when (commandChar) {
+            "*" -> "ALL"
+            "r" -> "SELECT"
+            "a" -> "INSERT"
+            "w" -> "UPDATE"
+            "d" -> "DELETE"
+            else -> commandChar
+        }
     val roles = array<String>("roles")?.toList() ?: emptyList()
     return PostgresPolicy(
         schema = string("schema"),
@@ -175,4 +186,137 @@ fun Row.toPostgresComment(): PostgresComment =
         objectSchema = string("schema"),
         commentedObjectName = string("object_name"),
         comment = string("comment"),
+    )
+
+/**
+ * Maps a database row to a [PostgresRule].
+ */
+fun Row.toPostgresRule(): PostgresRule =
+    PostgresRule(
+        schema = string("schema"),
+        pgObjectName = string("rule_name"),
+        tableName = string("table_name"),
+        event = string("event"),
+        definition = string("definition"),
+    )
+
+/**
+ * Maps a database row to a [PostgresTablespace].
+ */
+fun Row.toPostgresTablespace(): PostgresTablespace =
+    PostgresTablespace(
+        pgObjectName = string("tablespace_name"),
+        location = stringOrNull("location") ?: "",
+        options = null,
+    )
+
+/**
+ * Maps a database row to a [PostgresRole].
+ */
+fun Row.toPostgresRole(): PostgresRole =
+    PostgresRole(
+        pgObjectName = string("role_name"),
+        isSuperuser = boolean("is_superuser"),
+        canCreateDb = boolean("can_create_db"),
+        canCreateRole = boolean("can_create_role"),
+        canLogin = boolean("can_login"),
+        validUntil = stringOrNull("valid_until"),
+    )
+
+/**
+ * Maps a database row to a [PostgresSchemaObject].
+ */
+fun Row.toPostgresSchemaObject(): PostgresSchemaObject =
+    PostgresSchemaObject(
+        schemaName = string("schema_name"),
+        owner = string("owner"),
+    )
+
+/**
+ * Maps a database row to a [PostgresPublication].
+ */
+fun Row.toPostgresPublication(): PostgresPublication {
+    val tablesArray = array<String>("tables")?.toList()?.filterNotNull() ?: emptyList()
+    val publishOps = array<String>("publish_ops")?.toList()?.filterNotNull()?.toSet() ?: emptySet()
+    return PostgresPublication(
+        pgObjectName = string("publication_name"),
+        tables = tablesArray,
+        forAllTables = boolean("for_all_tables"),
+        publish = publishOps,
+    )
+}
+
+/**
+ * Maps a database row to a [PostgresSubscription].
+ */
+fun Row.toPostgresSubscription(): PostgresSubscription {
+    val pubNames = array<String>("publication_names")?.toList()?.filterNotNull() ?: emptyList()
+    return PostgresSubscription(
+        pgObjectName = string("subscription_name"),
+        connection = string("connection_info"),
+        publicationNames = pubNames,
+        enabled = boolean("enabled"),
+    )
+}
+
+/**
+ * Maps a database row to a [PostgresPartition].
+ */
+fun Row.toPostgresPartition(): PostgresPartition =
+    PostgresPartition(
+        schema = string("schema"),
+        pgObjectName = string("partition_name"),
+        parentTable = string("parent_table"),
+        partitionKey = stringOrNull("partition_key") ?: "",
+        partitionBound = stringOrNull("partition_bound") ?: "",
+    )
+
+/**
+ * Maps a database row to a [PostgresAggregate].
+ */
+fun Row.toPostgresAggregate(): PostgresAggregate =
+    PostgresAggregate(
+        schema = string("schema"),
+        pgObjectName = string("aggregate_name"),
+        argumentTypes = stringOrNull("argument_types") ?: "",
+        stateType = string("state_type"),
+        sfunc = string("sfunc"),
+        finalfunc = stringOrNull("finalfunc"),
+        initcond = stringOrNull("initcond"),
+    )
+
+/**
+ * Maps a database row to a [PostgresOperator].
+ */
+fun Row.toPostgresOperator(): PostgresOperator =
+    PostgresOperator(
+        schema = string("schema"),
+        pgObjectName = string("operator_name"),
+        leftType = stringOrNull("left_type"),
+        rightType = stringOrNull("right_type"),
+        function = string("function_name"),
+        commutator = stringOrNull("commutator"),
+        negator = stringOrNull("negator"),
+    )
+
+/**
+ * Maps a database row to a [PostgresCast].
+ */
+fun Row.toPostgresCast(): PostgresCast =
+    PostgresCast(
+        sourceType = string("source_type"),
+        targetType = string("target_type"),
+        function = stringOrNull("function_name"),
+        context = string("context"),
+    )
+
+/**
+ * Maps a database row to a [PostgresFTSConfiguration].
+ */
+fun Row.toPostgresFTSConfiguration(): PostgresFTSConfiguration =
+    PostgresFTSConfiguration(
+        schema = string("schema"),
+        pgObjectName = string("config_name"),
+        parser = string("parser"),
+        dictionaries = emptyMap(),
     )
