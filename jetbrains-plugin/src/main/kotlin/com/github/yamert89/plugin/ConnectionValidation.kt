@@ -1,5 +1,6 @@
 package com.github.yamert89.plugin
 
+import com.github.yamert89.plugin.ui.notifyInfo
 import com.github.yamert89.postgresql.PostgresConnectionTester
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
@@ -47,7 +48,9 @@ fun validateConnectionInBackground(
             }
         ApplicationManager.getApplication().invokeLater {
             if (isConnected) {
-                LOG.info("Connection '${connection.name}' validated successfully")
+                val msg = "Connection '${connection.name}' validated successfully"
+                LOG.info(msg)
+                project.notifyInfo(msg)
                 onSuccess?.invoke()
             } else {
                 LOG.warn("Connection '${connection.name}' validation failed")

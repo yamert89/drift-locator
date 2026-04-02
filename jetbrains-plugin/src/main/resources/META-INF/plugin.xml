@@ -18,6 +18,9 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="DriftLocator" anchor="bottom" factoryClass="com.github.yamert89.plugin.ui.DriftLocatorToolWindowFactory"/>
+        <notificationGroup id="DriftLocatorNotifications"
+                           displayType="BALLOON"
+                           isLogByDefault="true"/>
     </extensions>
 
     <actions>
