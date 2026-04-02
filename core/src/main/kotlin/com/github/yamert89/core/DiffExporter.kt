@@ -22,8 +22,8 @@ object DiffExporter {
         sb.appendLine("Total objects: ${schema.objects.size}")
         sb.appendLine()
 
-        // Sort objects by objectName for consistent output
-        val sortedObjects = schema.objects.sortedBy { it.objectName }
+        // Sort objects by type first, then by objectName for consistent output
+        val sortedObjects = schema.objects.sortedWith(compareBy({ it.type }, { it.objectName }))
 
         sortedObjects.forEach { obj ->
             appendSchemaObject(sb, obj, 0)

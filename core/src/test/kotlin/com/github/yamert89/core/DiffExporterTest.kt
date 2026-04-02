@@ -85,7 +85,7 @@ internal class DiffExporterTest {
     }
 
     @Test
-    fun `toText with schema exports sorted objects`() {
+    fun `toText with schema exports sorted objects by type then name`() {
         val objects =
             listOf(
                 MockObject("zebra", "TABLE"),
@@ -101,12 +101,13 @@ internal class DiffExporterTest {
         assertTrue(text.contains("[VIEW] middle"))
         assertTrue(text.contains("[TABLE] zebra"))
 
-        // Check alphabetical ordering
+        // Check ordering: grouped by type, then alphabetically within type
+        // TABLE < VIEW alphabetically, so all TABLEs come before VIEWs
         val alphaIndex = text.indexOf("[TABLE] alpha")
-        val middleIndex = text.indexOf("[VIEW] middle")
         val zebraIndex = text.indexOf("[TABLE] zebra")
-        assertTrue(alphaIndex < middleIndex, "alpha should come before middle")
-        assertTrue(middleIndex < zebraIndex, "middle should come before zebra")
+        val middleIndex = text.indexOf("[VIEW] middle")
+        assertTrue(alphaIndex < zebraIndex, "alpha should come before zebra (both TABLE)")
+        assertTrue(zebraIndex < middleIndex, "all TABLEs should come before VIEWs")
     }
 
     @Test
