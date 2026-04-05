@@ -1,6 +1,5 @@
 package com.github.yamert89.plugin.ui
 
-
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.project.Project
 

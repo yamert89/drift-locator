@@ -3,13 +3,10 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
     kotlin("jvm")
-    kotlin("plugin.serialization") version "2.3.10"
-    id("org.jetbrains.intellij.platform") version "2.9.0"
-    id("org.jetbrains.changelog") version "2.2.1"
+    alias(libs.plugins.serialization)
+    alias(libs.plugins.intelliJPlatform)
+    alias(libs.plugins.changelog)
 }
-
-group = "com.github.yamert89"
-version = "1.0.0-SNAPSHOT"
 
 kotlin {
     jvmToolchain(21)
@@ -41,9 +38,9 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":postgresql"))
     // Kotlinx Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation(libs.kotlinx.serialization.json)
     // SLF4J binding for kotlin-logging to redirect logs to IntelliJ's console
-    implementation("org.slf4j:slf4j-simple:2.0.16")
+    implementation(libs.slf4j.simple)
 }
 
 intellijPlatform {
@@ -128,11 +125,10 @@ detekt {
 }
 
 ktlint {
-    version.set("1.7.1")
+    version.set(libs.versions.ktlint.tool.get())
     outputToConsole.set(true)
     ignoreFailures.set(false)
     enableExperimentalRules.set(false)
-    disabledRules.set(setOf("experimental:ktlint-gradle-script"))
     //outputColorName.set("RED")
     filter {
         include("**/kotlin/**")

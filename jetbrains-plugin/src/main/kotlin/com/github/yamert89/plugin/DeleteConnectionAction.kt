@@ -50,12 +50,13 @@ class DeleteConnectionAction : AnAction() {
                 log.info("Selected connection to delete: '$connectionToDelete'")
 
                 // Confirm deletion
-                val result = Messages.showYesNoDialog(
-                    project,
-                    "Are you sure you want to delete connection '$connectionToDelete'?",
-                    "Confirm Delete",
-                    Messages.getQuestionIcon(),
-                )
+                val result =
+                    Messages.showYesNoDialog(
+                        project,
+                        "Are you sure you want to delete connection '$connectionToDelete'?",
+                        "Confirm Delete",
+                        Messages.getQuestionIcon(),
+                    )
 
                 if (result == Messages.YES) {
                     log.info("Deleting connection '$connectionToDelete'")

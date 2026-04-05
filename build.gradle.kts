@@ -1,17 +1,14 @@
+import io.gitlab.arturbosch.detekt.extensions.DetektExtension
+
 plugins {
-    kotlin("jvm") version "2.3.10" apply false
-    id("io.gitlab.arturbosch.detekt") version "1.23.8"
-    id("org.jlleitschuh.gradle.ktlint") version "12.1.0" apply false
-    java
+    alias(libs.plugins.kotlin) apply false
+    alias(libs.plugins.detekt) apply false
+    alias(libs.plugins.ktlint) apply false
 }
 
 allprojects {
     group = "com.github.yamert89"
     version = "1.0.0-SNAPSHOT"
-
-    repositories {
-        mavenCentral()
-    }
 }
 
 subprojects {
@@ -19,20 +16,29 @@ subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
+    @Suppress("DSL_SCOPE_VIOLATION")
     dependencies {
-        implementation(kotlin("stdlib"))
-        implementation("io.github.oshai:kotlin-logging-jvm:7.0.3")
+        add("implementation", kotlin("stdlib"))
+        add("implementation", rootProject.libs.kotlin.logging.get())
     }
 
     tasks.withType<Test> {
         useJUnitPlatform()
+        testLogging {
+            events("passed", "skipped", "failed")
+            showExceptions = true
+            showCauses = true
+        }
     }
-    java {
+
+    configure<JavaPluginExtension> {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
 
-    detekt {
+    extensions.configure<DetektExtension> {
         config.setFrom(files("$rootDir/detekt.yaml"))
+        buildUponDefaultConfig = false
+        autoCorrect = false
     }
 }
