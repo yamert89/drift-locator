@@ -119,7 +119,7 @@ fun Row.toPostgresTrigger(): PostgresTrigger {
  * Maps a database row to a [PostgresEnumType].
  */
 fun Row.toPostgresEnumType(): PostgresEnumType {
-    val values = array<String>("enum_values")?.toList() ?: emptyList()
+    val values = array<String>("enum_values").toList()
     return PostgresEnumType(
         schema = string("schema"),
         pgObjectName = string("enum_name"),
@@ -154,9 +154,8 @@ fun Row.toPostgresExtension(): PostgresExtension =
  * Maps a database row to a [PostgresPolicy].
  */
 fun Row.toPostgresPolicy(): PostgresPolicy {
-    val commandChar = string("command")
     val command =
-        when (commandChar) {
+        when (val commandChar = string("command")) {
             "*" -> "ALL"
             "r" -> "SELECT"
             "a" -> "INSERT"
@@ -164,7 +163,7 @@ fun Row.toPostgresPolicy(): PostgresPolicy {
             "d" -> "DELETE"
             else -> commandChar
         }
-    val roles = array<String>("roles")?.toList() ?: emptyList()
+    val roles = array<String>("roles").toList()
     return PostgresPolicy(
         schema = string("schema"),
         pgObjectName = string("policy_name"),
@@ -236,8 +235,8 @@ fun Row.toPostgresSchemaObject(): PostgresSchemaObject =
  * Maps a database row to a [PostgresPublication].
  */
 fun Row.toPostgresPublication(): PostgresPublication {
-    val tablesArray = array<String>("tables")?.toList()?.filterNotNull() ?: emptyList()
-    val publishOps = array<String>("publish_ops")?.toList()?.filterNotNull()?.toSet() ?: emptySet()
+    val tablesArray = array<String>("tables").toList()
+    val publishOps = array<String>("publish_ops").toList().toSet()
     return PostgresPublication(
         pgObjectName = string("publication_name"),
         tables = tablesArray,
@@ -250,7 +249,7 @@ fun Row.toPostgresPublication(): PostgresPublication {
  * Maps a database row to a [PostgresSubscription].
  */
 fun Row.toPostgresSubscription(): PostgresSubscription {
-    val pubNames = array<String>("publication_names")?.toList()?.filterNotNull() ?: emptyList()
+    val pubNames = array<String>("publication_names").toList()
     return PostgresSubscription(
         pgObjectName = string("subscription_name"),
         connection = string("connection_info"),
