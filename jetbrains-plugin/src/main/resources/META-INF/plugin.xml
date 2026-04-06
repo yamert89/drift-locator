@@ -1,8 +1,8 @@
 <idea-plugin>
     <id>com.github.yamert89.drift-locator</id>
     <name>Drift Locator</name>
-    <version>0.1.0</version>
-    <vendor email="yamert89@github.com" url="https://github.com/yamert89">yamert89</vendor>
+    <version>1.0.0</version>
+    <vendor email="softoad2@gmail.com" url="https://github.com/yamert89">yamert89</vendor>
 
     <description><![CDATA[
         Plugin for comparing database schemas across different DBMS.
@@ -17,7 +17,7 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="DriftLocator" anchor="bottom" factoryClass="com.github.yamert89.plugin.ui.DriftLocatorToolWindowFactory"/>
+        <toolWindow id="Drift Locator" icon="/icons/logo.svg" anchor="bottom" factoryClass="com.github.yamert89.plugin.ui.DriftLocatorToolWindowFactory"/>
         <notificationGroup id="DriftLocatorNotifications"
                            displayType="BALLOON"
                            isLogByDefault="true"/>

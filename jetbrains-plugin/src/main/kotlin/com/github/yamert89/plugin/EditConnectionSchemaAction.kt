@@ -71,7 +71,7 @@ class EditConnectionSchemaAction : AnAction() {
         val toolWindow =
             ToolWindowManager
                 .getInstance(project)
-                .getToolWindow("DriftLocator")
+                .getToolWindow("Drift Locator")
         return toolWindow
             ?.contentManager
             ?.getContent(0)

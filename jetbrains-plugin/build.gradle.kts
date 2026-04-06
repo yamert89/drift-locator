@@ -1,4 +1,5 @@
 import org.jetbrains.changelog.Changelog
+import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -37,7 +38,6 @@ dependencies {
     }
     implementation(project(":core"))
     implementation(project(":postgresql"))
-    // Kotlinx Serialization
     implementation(libs.kotlinx.serialization.json)
     // SLF4J binding for kotlin-logging to redirect logs to IntelliJ's console
     implementation(libs.slf4j.simple)
@@ -46,20 +46,18 @@ dependencies {
 intellijPlatform {
     pluginConfiguration {
         version = providers.gradleProperty("pluginVersion")
-
-        // Extract the <!-- Plugin description --> section from README.md and provide for the plugin's manifest
-        /*description =
-            providers.fileContents(layout.projectDirectory.file("README_PROD.md")).asText.map {
+        description =
+            providers.fileContents(layout.projectDirectory.file("README.md")).asText.map {
                 val start = "<!-- Plugin description -->"
                 val end = "<!-- Plugin description end -->"
 
                 with(it.lines()) {
                     if (!containsAll(listOf(start, end))) {
-                        throw GradleException("Plugin description section not found in README_PROD.md:\n$start ... $end")
+                        throw GradleException("Plugin description section not found in README.md:\n$start ... $end")
                     }
-                    subList(indexOf(start) + 1, indexOf(end)).joinToString("\n").let(::markdownToHTML) //todo
+                    subList(indexOf(start) + 1, indexOf(end)).joinToString("\n").let(::markdownToHTML)
                 }
-            }*/
+            }
 
         val changelog = project.changelog // local variable for configuration cache compatibility
         // Get the latest available change notes from the changelog file
@@ -119,9 +117,7 @@ tasks {
 detekt {
     buildUponDefaultConfig = true
     autoCorrect = true
-    //config.setFrom(files("$rootDir/detekt.yaml"))
     ignoreFailures = true
-    //source.setFrom("src/main/kotlin", "src/compat/kotlin")
 }
 
 ktlint {
@@ -129,7 +125,6 @@ ktlint {
     outputToConsole.set(true)
     ignoreFailures.set(false)
     enableExperimentalRules.set(false)
-    //outputColorName.set("RED")
     filter {
         include("**/kotlin/**")
         exclude { tree ->

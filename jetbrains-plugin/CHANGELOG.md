@@ -1,3 +1,13 @@
-## [Unreleased]
+# Drift Locator Changelog
+
+## [1.0.0]
+
 ### Added
-- Initial scaffold created 
+- Initial release with PostgreSQL support
+- Add, edit, and delete database connections
+- Compare schemas between two database instances
+- Support for tables, views, functions, procedures, sequences
+- Built-in IntelliJ IDEA diff viewer integration
+- Auto-save connections and auto-fill from last used
+- Schema snapshots export to `.driftLocator/YYYY_MM_DD_HH_MM/`
+

@@ -8,7 +8,6 @@ plugins {
 
 allprojects {
     group = "com.github.yamert89"
-    version = "1.0.0-SNAPSHOT"
 }
 
 subprojects {

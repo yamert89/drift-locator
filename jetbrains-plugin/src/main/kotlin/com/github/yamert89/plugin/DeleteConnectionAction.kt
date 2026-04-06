@@ -69,7 +69,7 @@ class DeleteConnectionAction : AnAction() {
     }
 
     private fun getToolWindowPanel(project: Project): DriftLocatorToolWindowPanel? {
-        val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("DriftLocator")
+        val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Drift Locator")
         return toolWindow
             ?.contentManager
             ?.getContent(0)
