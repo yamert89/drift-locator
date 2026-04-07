@@ -19,7 +19,7 @@ Provides database schema comparison across different instances. It helps develop
   - Functions
   - Procedures
   - Sequences
-- **Visual Diff Viewer** — Built-in IntelliJ IDEA diff viewer for side-by-side schema comparison
+- **Visual Diff Viewer** — Built-in IntelliJ IDEA diff viewer (Ctrl+D) for side-by-side schema comparison
 - **Export Reports** — Automatic export of schema snapshots to text files in your project
 - **Multiple Connections** — Manage and compare multiple database connections within your project
 
@@ -56,6 +56,8 @@ Provides database schema comparison across different instances. It helps develop
 4. Review results in the built-in Diff Viewer and exported snapshot files
 
 Connection settings include standard database credentials (host, port, database, schema, username, password). Default values are automatically populated from your last connection to speed up configuration.
+
+![img](media/example.png)
 
 #### Managing Connections
 
