@@ -43,21 +43,23 @@ dependencies {
     implementation(libs.slf4j.simple)
 }
 
+// Define plugin description provider once and reuse it
+val pluginDescriptionProvider = providers.fileContents(rootProject.layout.projectDirectory.file("README.md")).asText.map {
+    val start = "<!-- Plugin description -->"
+    val end = "<!-- Plugin description end -->"
+
+    with(it.lines()) {
+        if (!containsAll(listOf(start, end))) {
+            throw GradleException("Plugin description section not found in README.md:\n$start ... $end")
+        }
+        subList(indexOf(start) + 1, indexOf(end)).joinToString("\n").let(::markdownToHTML)
+    }
+}
+
 intellijPlatform {
     pluginConfiguration {
         version = providers.gradleProperty("pluginVersion")
-        description =
-            providers.fileContents(layout.projectDirectory.file("README.md")).asText.map {
-                val start = "<!-- Plugin description -->"
-                val end = "<!-- Plugin description end -->"
-
-                with(it.lines()) {
-                    if (!containsAll(listOf(start, end))) {
-                        throw GradleException("Plugin description section not found in README.md:\n$start ... $end")
-                    }
-                    subList(indexOf(start) + 1, indexOf(end)).joinToString("\n").let(::markdownToHTML)
-                }
-            }
+        description = pluginDescriptionProvider
 
         val changelog = project.changelog // local variable for configuration cache compatibility
         // Get the latest available change notes from the changelog file
@@ -111,6 +113,7 @@ tasks {
         sinceBuild.set(providers.gradleProperty("pluginSinceBuild"))
         untilBuild.set(providers.gradleProperty("pluginUntilBuild"))
         pluginVersion.set(providers.gradleProperty("pluginVersion"))
+        pluginDescription.value(pluginDescriptionProvider)
     }
 }
 

@@ -4,8 +4,9 @@
 [![Platform](https://img.shields.io/badge/platform-IntelliJ%20IDEA-purple.svg)](https://www.jetbrains.com/idea/)
 [![PostgreSQL](https://img.shields.io/badge/postgresql-12+-green.svg)](https://www.postgresql.org/)
 
+**Drift Locator** is an IntelliJ IDEA plugin.
 <!-- Plugin description -->
-**Drift Locator** is an IntelliJ IDEA plugin for comparing database schemas across different instances. It helps developers identify differences between diferent environments, ensuring smooth deployments and early detection of schema drift.
+Provides database schema comparison across different instances. It helps developers identify differences between diferent environments, ensuring smooth deployments and early detection of schema drift.
 
 > **Note:** Currently only PostgreSQL is supported. Other database systems are planned for future releases.
 
@@ -66,6 +67,8 @@ Connection settings include standard database credentials (host, port, database,
 
 Schema snapshots are exported to `.driftLocator/YYYY_MM_DD_HH_MM/` directory within your project.
 
+<!-- Plugin description end -->
+
 ## Building from Source
 
 ```bash
@@ -89,7 +92,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 If you encounter any issues or have feature requests, please [create an issue](https://github.com/yamert89/drift-locator/issues) on GitHub.
-
-
-<!-- Plugin description end -->
-
