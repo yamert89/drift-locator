@@ -349,17 +349,27 @@ class PostgresSchemaComparator : SchemaComparator {
                 matViews.add(row.string("schema") to row.string("matview_name"))
             }
 
-            // Fetch columns for each materialized view
+            // Fetch columns for each materialized view using pg_catalog
             for ((schema, name) in matViews) {
                 val columnQuery =
                     """
-                    SELECT column_name, data_type, is_nullable, column_default, ordinal_position
-                    FROM information_schema.columns
-                    WHERE table_schema = ? AND table_name = ?
-                    ORDER BY ordinal_position
+                    SELECT a.attname AS column_name,
+                           pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
+                           CASE WHEN a.attnotnull THEN 'NO' ELSE 'YES' END AS is_nullable,
+                           pg_get_expr(d.adbin, d.adrelid) AS column_default,
+                           a.attnum AS ordinal_position
+                    FROM pg_attribute a
+                    JOIN pg_class c ON a.attrelid = c.oid
+                    JOIN pg_namespace n ON c.relnamespace = n.oid
+                    LEFT JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+                    WHERE c.relname = ?
+                      AND n.nspname = ?
+                      AND a.attnum > 0
+                      AND NOT a.attisdropped
+                    ORDER BY a.attnum
                     """.trimIndent()
                 val columns = mutableListOf<PostgresColumn>()
-                session.forEach(queryOf(columnQuery, schema, name)) { row ->
+                session.forEach(queryOf(columnQuery, name, schema)) { row ->
                     columns.add(row.toPostgresColumn())
                 }
                 objects.add(

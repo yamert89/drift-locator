@@ -104,6 +104,428 @@ class PostgresSchemaComparatorTest {
     }
 
     @Test
+    fun `fetch schema should include view with columns`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE TABLE users (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100)
+            )
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE VIEW active_users AS
+            SELECT id, name FROM users WHERE name IS NOT NULL
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val views = schema.objects.filter { it.type == "VIEW" }
+        assertEquals(1, views.size)
+        val view = views.first() as PostgresView
+        assertEquals("public.active_users", view.name)
+        assertEquals(2, view.columns.size)
+
+        val idColumn = view.columns.find { it.columnName == "id" }
+        assertNotNull(idColumn)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include function`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE OR REPLACE FUNCTION get_current_timestamp()
+            RETURNS TIMESTAMP AS $$
+            BEGIN
+                RETURN NOW();
+            END;
+            $$ LANGUAGE plpgsql
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val functions = schema.objects.filter { it.type == "FUNCTION" }
+        assertEquals(1, functions.size)
+        val function = functions.first() as PostgresFunction
+        assertEquals("public.get_current_timestamp", function.name)
+        assertEquals("timestamp without time zone", function.returnType)
+        assertEquals("plpgsql", function.language)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include procedure`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id SERIAL PRIMARY KEY,
+                action VARCHAR(100),
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE OR REPLACE PROCEDURE log_action(action_text VARCHAR)
+            LANGUAGE SQL
+            AS $$
+                INSERT INTO audit_log (action) VALUES (action_text);
+            $$;
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val procedures = schema.objects.filter { it.type == "PROCEDURE" }
+        assertEquals(1, procedures.size)
+        val procedure = procedures.first() as PostgresProcedure
+        assertEquals("public.log_action", procedure.name)
+        assertEquals("sql", procedure.language)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include sequence`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE SEQUENCE custom_seq
+                START WITH 100
+                INCREMENT BY 10
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val sequences = schema.objects.filter { it.type == "SEQUENCE" }
+        assertEquals(1, sequences.size)
+        val sequence = sequences.first() as PostgresSequence
+        assertEquals("public.custom_seq", sequence.name)
+        assertEquals(100L, sequence.startValue)
+        assertEquals(10L, sequence.increment)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include domain`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE DOMAIN positive_integer AS INTEGER
+                CHECK (VALUE > 0)
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val domains = schema.objects.filter { it.type == "DOMAIN" }
+        assertEquals(1, domains.size)
+        val domain = domains.first() as PostgresDomain
+        assertEquals("public.positive_integer", domain.name)
+        assertEquals("integer", domain.baseType)
+        assertNotNull(domain.checkConstraint)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include extension`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val extensions = schema.objects.filter { it.type == "EXTENSION" }
+        assertTrue(extensions.isNotEmpty())
+        val uuidExtension = extensions.find { it.name.contains("uuid-ossp") }
+        assertNotNull(uuidExtension)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include trigger`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE TABLE test_table (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100),
+                created_at TIMESTAMP
+            )
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE OR REPLACE FUNCTION set_created_at()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.created_at = NOW();
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE TRIGGER trg_before_insert
+            BEFORE INSERT ON test_table
+            FOR EACH ROW
+            EXECUTE FUNCTION set_created_at()
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val triggers = schema.objects.filter { it.type == "TRIGGER" }
+        assertEquals(1, triggers.size)
+        val trigger = triggers.first() as PostgresTrigger
+        assertEquals("test_table", trigger.tableName)
+        assertEquals("BEFORE", trigger.timing)
+        assertEquals("INSERT", trigger.event)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include materialized view`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE TABLE orders (
+                id SERIAL PRIMARY KEY,
+                total NUMERIC(10,2)
+            )
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE MATERIALIZED VIEW order_summary AS
+            SELECT id, total FROM orders
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val matViews = schema.objects.filter { it.type == "MATERIALIZED_VIEW" }
+        assertEquals(1, matViews.size, "Expected 1 materialized view, found: ${matViews.map { it.name }}")
+        val matView = matViews.first() as PostgresMaterializedView
+        assertEquals("public.order_summary", matView.name)
+        assertEquals(2, matView.columns.size, "Expected 2 columns, found: ${matView.columns.map { it.columnName }}")
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include policy`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE TABLE sensitive_data (
+                id SERIAL PRIMARY KEY,
+                data TEXT
+            )
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            ALTER TABLE sensitive_data ENABLE ROW LEVEL SECURITY
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE POLICY all_access ON sensitive_data
+            FOR ALL
+            TO PUBLIC
+            USING (true)
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val policies = schema.objects.filter { it.type == "POLICY" }
+        assertEquals(1, policies.size)
+        val policy = policies.first() as PostgresPolicy
+        assertEquals("sensitive_data", policy.tableName)
+        assertEquals("ALL", policy.command)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include comment`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE TABLE commented_table (
+                id SERIAL PRIMARY KEY
+            )
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            COMMENT ON TABLE commented_table IS 'This is a test table'
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val comments = schema.objects.filter { it.type == "COMMENT" }
+        assertEquals(1, comments.size)
+        val comment = comments.first() as PostgresComment
+        assertEquals("TABLE", comment.objectType)
+        assertEquals("commented_table", comment.commentedObjectName)
+        assertEquals("This is a test table", comment.comment)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include enum type`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE TYPE order_status AS ENUM ('pending', 'processing', 'completed')
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val enums = schema.objects.filter { it.type == "ENUM" }
+        assertEquals(1, enums.size)
+        val enumType = enums.first() as PostgresEnumType
+        assertEquals("public.order_status", enumType.name)
+        assertEquals(listOf("pending", "processing", "completed"), enumType.values)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include index`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE TABLE indexed_table (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(100)
+            )
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE UNIQUE INDEX idx_email ON indexed_table(email)
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val tables = schema.objects.filter { it.type == "TABLE" }
+        assertEquals(1, tables.size)
+        val table = tables.first() as PostgresTable
+
+        val emailIndex = table.indexes.find { it.indexName == "idx_email" }
+        assertNotNull(emailIndex)
+        assertTrue(emailIndex?.isUnique ?: false)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include constraint`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE TABLE constrained_table (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(100) UNIQUE,
+                status VARCHAR(20) DEFAULT 'active'
+            )
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val tables = schema.objects.filter { it.type == "TABLE" }
+        assertEquals(1, tables.size)
+        val table = tables.first() as PostgresTable
+
+        val pkConstraint = table.constraints.find { it.constraintType == "PRIMARY KEY" }
+        assertNotNull(pkConstraint)
+
+        val uniqueConstraint = table.constraints.find { it.constraintType == "UNIQUE" }
+        assertNotNull(uniqueConstraint)
+
+        connection.close()
+    }
+
+    @Test
     fun `compare identical schemas should have no differences`() {
         val connection =
             DriverManager.getConnection(

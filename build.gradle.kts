@@ -1,9 +1,11 @@
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
+import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     alias(libs.plugins.kotlin) apply false
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.ktlint) apply false
+    jacoco
 }
 
 allprojects {
@@ -15,7 +17,6 @@ subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
-    @Suppress("DSL_SCOPE_VIOLATION")
     dependencies {
         add("implementation", kotlin("stdlib"))
         add("implementation", rootProject.libs.kotlin.logging.get())
@@ -39,5 +40,46 @@ subprojects {
         config.setFrom(files("$rootDir/detekt.yaml"))
         buildUponDefaultConfig = false
         autoCorrect = false
+    }
+
+    // JaCoCo configuration
+    apply(plugin = "jacoco")
+
+    tasks.named<JacocoReport>("jacocoTestReport") {
+        dependsOn(tasks.named<Test>("test"))
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
+        }
+    }
+}
+
+// Aggregated JaCoCo report for all subprojects
+tasks.register<JacocoReport>("jacocoMergedReport") {
+    group = "verification"
+    description = "Generates merged code coverage report for all subprojects"
+
+    val jacocoTestReports = subprojects.mapNotNull { subproject ->
+        subproject.tasks.findByName("jacocoTestReport") as? JacocoReport
+    }
+
+    dependsOn(jacocoTestReports)
+
+    executionData.setFrom(
+        jacocoTestReports.map { it.executionData }
+    )
+
+    sourceDirectories.setFrom(
+        jacocoTestReports.map { it.sourceDirectories }
+    )
+
+    classDirectories.setFrom(
+        jacocoTestReports.map { it.classDirectories }
+    )
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/merged"))
     }
 }

@@ -21,6 +21,10 @@
         <notificationGroup id="DriftLocatorNotifications"
                            displayType="BALLOON"
                            isLogByDefault="true"/>
+        
+        <!-- Install/Update hooks -->
+        <applicationService serviceImplementation="com.github.yamert89.plugin.install.PluginInstallService"/>
+        <postStartupActivity implementation="com.github.yamert89.plugin.install.InstallHookExecutor"/>
     </extensions>
 
     <actions>

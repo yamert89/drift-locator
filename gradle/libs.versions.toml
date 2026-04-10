@@ -38,7 +38,6 @@ testcontainers-junit-jupiter = { group = "org.testcontainers", name = "junit-jup
 
 [bundles]
 testcontainers = ["testcontainers", "testcontainers-postgresql", "testcontainers-junit-jupiter"]
-junit = ["junit-jupiter-api", "junit-jupiter-engine"]
 testing = ["kotlin-test", "junit-jupiter-api", "junit-jupiter-engine"]
 
 [plugins]

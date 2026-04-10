@@ -8,5 +8,5 @@ dependencies {
     implementation(libs.kotliquery)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.bundles.testcontainers)
-    testImplementation(libs.bundles.junit)
+    testImplementation(libs.bundles.testing)
 }
