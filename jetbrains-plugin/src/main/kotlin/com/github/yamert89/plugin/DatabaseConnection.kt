@@ -26,9 +26,6 @@ data class DatabaseConnection(
     @Transient
     var password: String? = null
         get() = field ?: PasswordStorage.getPassword(id)
-        set(value) {
-            field = value
-        }
 
     val url: String
         get() = "jdbc:postgresql://$host:$port/$database"

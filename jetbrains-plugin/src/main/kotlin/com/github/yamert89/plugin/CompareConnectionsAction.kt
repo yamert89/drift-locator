@@ -27,10 +27,7 @@ class CompareConnectionsAction : AnAction() {
     private val log = Logger.getInstance("CompareConnectionsAction")
 
     override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project
-        if (project == null) {
-            return
-        }
+        val project = e.project ?: return
         val service = DriftLocatorProjectService.getInstance(project)
         val toolWindowPanel = getToolWindowPanel(project)
         log.info("CompareConnectionsAction triggered, connections count: ${service.connections.size}")

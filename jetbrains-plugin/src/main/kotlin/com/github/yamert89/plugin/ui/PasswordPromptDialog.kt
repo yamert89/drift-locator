@@ -51,29 +51,20 @@ class PasswordPromptDialog(
             }
         }
 
-    fun getSourcePassword(): String? {
-        if (!sourceConnection.savePassword) {
-            val password = String(sourcePasswordField.password)
-            return password.ifEmpty { null }
-        }
-        // If savePassword is true but password was not loaded, use the field
-        if (sourceConnection.password.isNullOrBlank()) {
-            val password = String(sourcePasswordField.password)
-            return password.ifEmpty { null }
-        }
-        return sourceConnection.password
-    }
+    fun getSourcePassword(): String? = sourcePasswordField.getPassword(sourceConnection)
 
-    fun getTargetPassword(): String? {
-        if (!targetConnection.savePassword) {
-            val password = String(targetPasswordField.password)
+    fun getTargetPassword(): String? = targetPasswordField.getPassword(targetConnection)
+
+    private fun JPasswordField.getPassword(connection: DatabaseConnection): String? {
+        if (!connection.savePassword) {
+            val password = String(this.password)
             return password.ifEmpty { null }
         }
         // If savePassword is true but password was not loaded, use the field
-        if (targetConnection.password.isNullOrBlank()) {
-            val password = String(targetPasswordField.password)
+        if (connection.password.isNullOrBlank()) {
+            val password = String(this.password)
             return password.ifEmpty { null }
         }
-        return targetConnection.password
+        return connection.password
     }
 }

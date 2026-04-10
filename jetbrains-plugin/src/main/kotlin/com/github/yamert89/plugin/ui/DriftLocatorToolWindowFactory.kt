@@ -2,7 +2,6 @@
 
 package com.github.yamert89.plugin.ui
 
-import com.github.yamert89.plugin.DatabaseConnection
 import com.github.yamert89.plugin.DriftLocatorProjectService
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionGroup
@@ -37,8 +36,8 @@ class DriftLocatorToolWindowFactory : ToolWindowFactory {
     }
 }
 
-class DriftLocatorToolWindowPanel(private val project: Project) : JPanel(BorderLayout()) {
-    private val service = DriftLocatorProjectService.Companion.getInstance(project)
+class DriftLocatorToolWindowPanel(project: Project) : JPanel(BorderLayout()) {
+    private val service = DriftLocatorProjectService.getInstance(project)
     private val connectionList = JBList<ConnectionListItem>()
     private val listModel = DefaultListModel<ConnectionListItem>()
 
