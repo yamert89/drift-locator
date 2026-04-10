@@ -7,6 +7,7 @@ import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.dsl.builder.Cell
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
+import javax.swing.JCheckBox
 import javax.swing.JComponent
 import javax.swing.JPasswordField
 import javax.swing.JTextField
@@ -18,7 +19,8 @@ class EditConnectionDialog(project: Project, private val connection: DatabaseCon
     private val portField = JTextField(connection.port.toString())
     private val databaseField = JTextField(connection.database)
     private val usernameField = JTextField(connection.username)
-    private val passwordField = JPasswordField()
+    private val passwordField = JPasswordField(connection.password ?: "")
+    private val savePasswordCheckbox = JCheckBox("Save password", connection.savePassword)
     private val schemaField = JTextField(connection.schema)
 
     init {
@@ -80,6 +82,9 @@ class EditConnectionDialog(project: Project, private val connection: DatabaseCon
                 cell(passwordField)
                     .columns(COLUMN_SIZE)
             }
+            row {
+                cell(savePasswordCheckbox)
+            }
         }
 
     fun getConnectionName(): String = nameField.text.trim()
@@ -98,6 +103,8 @@ class EditConnectionDialog(project: Project, private val connection: DatabaseCon
         val password = String(passwordField.password)
         return password.ifEmpty { null }
     }
+
+    fun getSavePassword(): Boolean = savePasswordCheckbox.isSelected
 
     fun getOriginalId(): String = originalId
 }

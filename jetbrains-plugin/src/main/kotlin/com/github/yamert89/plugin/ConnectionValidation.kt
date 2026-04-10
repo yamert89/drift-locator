@@ -62,7 +62,10 @@ fun validateConnectionInBackground(
                         "Removing connection '${connection.name}' from service due to " +
                             "validation failure",
                     )
-                    service.removeConnection(connection.id)
+                    // Remove connection in background thread to avoid SlowOperations on EDT
+                    ApplicationManager.getApplication().executeOnPooledThread {
+                        service.removeConnection(connection.id)
+                    }
                     Messages.showErrorDialog(
                         project,
                         "Connection '${connection.name}' failed to connect. " +

@@ -3,6 +3,7 @@ package com.github.yamert89.plugin
 import com.github.yamert89.core.DatabaseSchema
 import com.github.yamert89.core.DiffExporter
 import com.github.yamert89.plugin.ui.DriftLocatorToolWindowPanel
+import com.github.yamert89.plugin.ui.PasswordPromptDialog
 import com.github.yamert89.postgresql.PostgresConnectionManager
 import com.github.yamert89.postgresql.PostgresSchemaComparator
 import com.intellij.diff.DiffContentFactory
@@ -75,13 +76,32 @@ class CompareConnectionsAction : AnAction() {
             Messages.showErrorDialog(project, "Target connection not found: $targetConnectionId", "Error")
             return
         }
+
+        // Check if passwords are needed
+        val sourceNeedsPassword = !sourceConnection.savePassword || sourceConnection.password.isNullOrBlank()
+        val targetNeedsPassword = !targetConnection.savePassword || targetConnection.password.isNullOrBlank()
+
+        var finalSourceConnection = sourceConnection
+        var finalTargetConnection = targetConnection
+
+        // Show password prompt dialog if needed
+        if (sourceNeedsPassword || targetNeedsPassword) {
+            val dialog = PasswordPromptDialog(project, sourceConnection, targetConnection)
+            if (!dialog.showAndGet()) {
+                log.info("Password prompt cancelled by user")
+                return
+            }
+            finalSourceConnection = sourceConnection.withPassword(dialog.getSourcePassword())
+            finalTargetConnection = targetConnection.withPassword(dialog.getTargetPassword())
+        }
+
         log.info(
             "Starting schema comparison between connections: '$sourceConnectionId' " +
                 "(schema: '${sourceConnection.schema}') and '$targetConnectionId' " +
                 "(schema: '${targetConnection.schema}')",
         )
         ApplicationManager.getApplication().executeOnPooledThread {
-            executeComparison(project, sourceConnection, targetConnection)
+            executeComparison(project, finalSourceConnection, finalTargetConnection)
         }
     }
 

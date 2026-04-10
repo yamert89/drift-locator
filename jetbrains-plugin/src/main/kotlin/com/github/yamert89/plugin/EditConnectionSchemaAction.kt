@@ -47,9 +47,9 @@ class EditConnectionSchemaAction : AnAction() {
                     port = dialog.getPort(),
                     database = dialog.getDatabase(),
                     username = dialog.getUsername(),
-                    password = dialog.getPassword(),
                     schema = dialog.getSchema(),
-                )
+                    savePassword = dialog.getSavePassword(),
+                ).withPassword(dialog.getPassword())
             try {
                 service.updateConnection(connectionId, newConnection)
                 log.info("Connection '$connectionId' updated to: ${newConnection.name} (${newConnection.host}:${newConnection.port})")

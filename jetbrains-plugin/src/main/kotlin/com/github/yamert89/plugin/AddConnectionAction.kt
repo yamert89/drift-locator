@@ -22,9 +22,9 @@ class AddConnectionAction : AnAction() {
                     port = dialog.getPort(),
                     database = dialog.getDatabase(),
                     username = dialog.getUsername(),
-                    password = dialog.getPassword(),
                     schema = dialog.getSchema(),
-                )
+                    savePassword = dialog.getSavePassword(),
+                ).withPassword(dialog.getPassword())
             val passwordStatus = if (connection.password.isNullOrEmpty()) "not set" else "set"
             log.info(
                 "Adding connection '${connection.name}' " +
