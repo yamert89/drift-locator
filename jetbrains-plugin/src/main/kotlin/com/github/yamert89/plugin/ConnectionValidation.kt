@@ -12,13 +12,14 @@ private val LOG = Logger.getInstance("DriftLocator.ConnectionValidation")
 
 /**
  * Validates a database connection in a background thread and invokes callbacks accordingly.
+ * Updates the connection's validation status in the service based on the result.
  *
  * @param project The project context (used for UI operations if needed).
  * @param connection The connection to validate.
  * @param onSuccess Optional callback invoked on the UI thread when the connection is successful.
  * @param onFailure Optional callback invoked on the UI thread when the connection fails.
- *                  If not provided, a default error dialog will be shown and the connection will be removed from the service.
- * @param service The service from which the connection can be removed (required for default failure handling).
+ *                  If not provided, a default error dialog will be shown.
+ * @param service The service for updating connection validation status.
  */
 fun validateConnectionInBackground(
     project: Project,
@@ -51,21 +52,20 @@ fun validateConnectionInBackground(
                 val msg = "Connection '${connection.name}' validated successfully"
                 LOG.info(msg)
                 project.notifyInfo(msg)
+                // Reset connection status to valid
+                ApplicationManager.getApplication().executeOnPooledThread {
+                    service.updateConnectionValidationStatus(connection.id, true)
+                }
                 onSuccess?.invoke()
             } else {
                 LOG.warn("Connection '${connection.name}' validation failed")
+                // Update connection status to invalid
+                ApplicationManager.getApplication().executeOnPooledThread {
+                    service.updateConnectionValidationStatus(connection.id, false)
+                }
                 if (onFailure != null) {
                     onFailure.invoke()
                 } else {
-                    // Default failure behavior: remove connection and show error dialog
-                    LOG.info(
-                        "Removing connection '${connection.name}' from service due to " +
-                            "validation failure",
-                    )
-                    // Remove connection in background thread to avoid SlowOperations on EDT
-                    ApplicationManager.getApplication().executeOnPooledThread {
-                        service.removeConnection(connection.id)
-                    }
                     Messages.showErrorDialog(
                         project,
                         "Connection '${connection.name}' failed to connect. " +

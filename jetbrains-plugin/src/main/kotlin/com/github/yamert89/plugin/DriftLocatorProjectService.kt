@@ -55,6 +55,20 @@ class DriftLocatorProjectService(private val project: Project) {
     }
 
     /**
+     * Updates the validation status of a connection.
+     * @return true if the connection was found and updated, false otherwise
+     */
+    fun updateConnectionValidationStatus(id: String, isValid: Boolean): Boolean {
+        val connection = connections[id] ?: return false
+        if (connection.isValid != isValid) {
+            connections[id] = connection.copy(isValid = isValid)
+            saveConnections()
+            notifyConnectionChanged()
+        }
+        return true
+    }
+
+    /**
      * Removes a connection by ID, saves to disk, and notifies listeners.
      * Also removes the associated password from secure storage.
      * @return the removed connection or null if not found

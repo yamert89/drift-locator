@@ -17,6 +17,7 @@ data class DatabaseConnection(
     val username: String,
     val schema: String,
     val savePassword: Boolean = true,
+    val isValid: Boolean = true,
 ) {
     /**
      * The password is stored separately in PasswordSafe (encrypted OS keychain).

@@ -77,9 +77,9 @@ class CompareConnectionsAction : AnAction() {
             return
         }
 
-        // Check if passwords are needed
-        val sourceNeedsPassword = !sourceConnection.savePassword || sourceConnection.password.isNullOrBlank()
-        val targetNeedsPassword = !targetConnection.savePassword || targetConnection.password.isNullOrBlank()
+        // Check if passwords are needed (only if user chose not to save password)
+        val sourceNeedsPassword = !sourceConnection.savePassword
+        val targetNeedsPassword = !targetConnection.savePassword
 
         var finalSourceConnection = sourceConnection
         var finalTargetConnection = targetConnection
@@ -91,8 +91,8 @@ class CompareConnectionsAction : AnAction() {
                 log.info("Password prompt cancelled by user")
                 return
             }
-            finalSourceConnection = sourceConnection.withPassword(dialog.getSourcePassword())
-            finalTargetConnection = targetConnection.withPassword(dialog.getTargetPassword())
+            finalSourceConnection = sourceConnection.withPassword(dialog.getSourcePassword() ?: sourceConnection.password)
+            finalTargetConnection = targetConnection.withPassword(dialog.getTargetPassword() ?: targetConnection.password)
         }
 
         log.info(
