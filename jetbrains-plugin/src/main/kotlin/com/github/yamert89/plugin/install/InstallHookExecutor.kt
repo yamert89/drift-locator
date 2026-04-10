@@ -88,11 +88,16 @@ class InstallHookExecutor : ProjectActivity {
 
     /**
      * Gets the current version of the Drift Locator plugin.
+     * Uses reflection for compatibility with older IDE versions (241-251)
+     * where PluginId.Companion may not be resolved correctly.
      */
     private fun getCurrentPluginVersion(): String? {
         return try {
-            val pluginId = PluginId.getId(PLUGIN_ID)
-            PluginManagerCore.getPlugin(pluginId)?.version
+            // Use reflection to avoid NoSuchFieldError for PluginId.Companion in older IDE versions
+            val pluginIdClass = Class.forName("com.intellij.openapi.extensions.PluginId")
+            val getIdMethod = pluginIdClass.getMethod("getId", String::class.java)
+            val pluginId = getIdMethod.invoke(null, PLUGIN_ID)
+            PluginManagerCore.getPlugin(pluginId as PluginId)?.version
         } catch (e: Exception) {
             LOG.warn("Failed to get plugin version: ${e.message}")
             null
