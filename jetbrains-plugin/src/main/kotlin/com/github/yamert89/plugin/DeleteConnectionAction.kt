@@ -15,17 +15,14 @@ class DeleteConnectionAction : AnAction() {
         val project = e.project ?: return
         val service = DriftLocatorProjectService.getInstance(project)
         val toolWindowPanel = getToolWindowPanel(project)
-
         log.info("DeleteConnectionAction triggered, connections count: ${service.connections.size}")
 
-        // Check if there are connections
         if (service.connections.isEmpty()) {
             log.warn("No connections to delete")
             Messages.showInfoMessage(project, "No connections to delete", "Delete Connection")
             return
         }
 
-        // Get selected connections from the tool window panel
         val selectedConnections = toolWindowPanel?.getSelectedConnections() ?: emptyList()
 
         when {

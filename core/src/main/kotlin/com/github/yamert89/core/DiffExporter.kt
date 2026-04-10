@@ -40,8 +40,6 @@ object DiffExporter {
     ) {
         val indentStr = "  ".repeat(indent)
         sb.appendLine("$indentStr[${obj.type}] ${obj.objectName}")
-
-        // Sort children by objectName for consistent output
         val sortedChildren = obj.children.sortedBy { it.objectName }
         sortedChildren.forEach { child ->
             appendSchemaObject(sb, child, indent + 1)

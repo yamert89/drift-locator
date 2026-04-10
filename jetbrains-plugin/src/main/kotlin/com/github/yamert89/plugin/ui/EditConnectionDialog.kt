@@ -22,7 +22,6 @@ class EditConnectionDialog(project: Project, private val connection: DatabaseCon
     private val schemaField = JTextField(connection.schema)
 
     init {
-        // Password field is left empty; empty means "no change"
         init()
         title = "Edit Database Connection"
     }

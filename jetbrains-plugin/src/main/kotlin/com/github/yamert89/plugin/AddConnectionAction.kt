@@ -31,9 +31,7 @@ class AddConnectionAction : AnAction() {
                     "(${connection.host}:${connection.port}/${connection.database}, " +
                     "schema=${connection.schema}, username=${connection.username}, password=$passwordStatus)",
             )
-
             service.addConnection(connection)
-            // Validate connection in background
             validateConnectionInBackground(project, connection, service)
         } else {
             log.debug("Add connection dialog cancelled")

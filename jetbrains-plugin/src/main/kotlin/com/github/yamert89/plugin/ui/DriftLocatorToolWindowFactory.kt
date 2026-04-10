@@ -31,26 +31,21 @@ class DriftLocatorToolWindowPanel(private val project: Project) : JPanel(BorderL
     private val listModel = DefaultListModel<String>()
 
     init {
-        initUI()
+        createToolbarWithActions()
         updateConnectionList()
         // Subscribe to connection changes
         service.addConnectionChangeListener { updateConnectionList() }
     }
 
-    private fun initUI() {
-        // Create toolbar with actions
+    private fun createToolbarWithActions() {
         val actManager = ActionManager.getInstance()
         val group = actManager.getAction("com.github.yamert89.plugin.toolWindow") as ActionGroup
         val toolBar = actManager.createActionToolbar(ActionPlaces.TOOLBAR, group, true)
         toolBar.targetComponent = this
         add(toolBar.component, BorderLayout.PAGE_START)
-
-        // List of connections
         connectionList.model = listModel
         connectionList.selectionMode = ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
         val scrollPane = JBScrollPane(connectionList)
-
-        // Add to main panel
         add(scrollPane, BorderLayout.CENTER)
     }
 

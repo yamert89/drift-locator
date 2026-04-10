@@ -30,13 +30,9 @@ class CompareConnectionsAction : AnAction() {
         if (project == null) {
             return
         }
-
         val service = DriftLocatorProjectService.getInstance(project)
         val toolWindowPanel = getToolWindowPanel(project)
-
         log.info("CompareConnectionsAction triggered, connections count: ${service.connections.size}")
-
-        // Check if there are enough connections
         if (service.connections.size < 2) {
             log.warn("Not enough connections configured")
             Messages.showErrorDialog(
@@ -45,9 +41,7 @@ class CompareConnectionsAction : AnAction() {
                 "Not Enough Connections",
             )
         } else {
-            // Get selected connections from the tool window panel
             val selectedConnections = toolWindowPanel?.getSelectedConnections() ?: emptyList()
-
             if (selectedConnections.size != 2) {
                 log.warn("Invalid number of connections selected: ${selectedConnections.size}")
                 Messages.showErrorDialog(
@@ -71,25 +65,21 @@ class CompareConnectionsAction : AnAction() {
     ) {
         val sourceConnection = service.connections[sourceConnectionId]
         val targetConnection = service.connections[targetConnectionId]
-
         if (sourceConnection == null) {
             log.error("Source connection not found: $sourceConnectionId")
             Messages.showErrorDialog(project, "Source connection not found: $sourceConnectionId", "Error")
             return
         }
-
         if (targetConnection == null) {
             log.error("Target connection not found: $targetConnectionId")
             Messages.showErrorDialog(project, "Target connection not found: $targetConnectionId", "Error")
             return
         }
-
         log.info(
             "Starting schema comparison between connections: '$sourceConnectionId' " +
                 "(schema: '${sourceConnection.schema}') and '$targetConnectionId' " +
                 "(schema: '${targetConnection.schema}')",
         )
-
         ApplicationManager.getApplication().executeOnPooledThread {
             executeComparison(project, sourceConnection, targetConnection)
         }
@@ -136,7 +126,7 @@ class CompareConnectionsAction : AnAction() {
                 password = connection.password,
             ).use { conn ->
                 log.debug("Fetching schema: ${connection.schema} from ${connection.name}")
-                PostgresSchemaComparator.Companion.fetchSchema(conn, connection.schema)
+                PostgresSchemaComparator.fetchSchema(conn, connection.schema)
             }
 
     private fun showComparisonResultOnUiThread(
@@ -199,7 +189,6 @@ class CompareConnectionsAction : AnAction() {
         val sourceContent = contentFactory.create(project, sourceVFile)
         val targetContent = contentFactory.create(project, targetVFile)
 
-        // Create and show diff request
         val diffRequest =
             SimpleDiffRequest(
                 "Schema Comparison: ${sourceConnection.name} vs ${targetConnection.name}",

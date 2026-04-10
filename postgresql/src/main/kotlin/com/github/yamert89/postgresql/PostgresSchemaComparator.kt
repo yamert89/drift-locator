@@ -34,7 +34,6 @@ class PostgresSchemaComparator : SchemaComparator {
         return SchemaDiff(added, removed, modified)
     }
 
-    @Suppress("LargeClass")
     companion object {
         /**
          * Fetches all schemas from a PostgreSQL database (excluding system schemas).
@@ -52,57 +51,24 @@ class PostgresSchemaComparator : SchemaComparator {
             logger.info { "Fetching schema ${schemaName ?: "(all non-system)"}" }
             val session = Session(KConnection(connection))
             val objects = mutableListOf<DatabaseObject>()
-
-            // Fetch tables with columns, indexes, constraints
             fetchSafely("tables") { fetchTables(session, objects, schemaName) }
-
-            // Fetch views
             fetchSafely("views") { fetchViews(session, objects, schemaName) }
-
-            // Fetch functions
             fetchSafely("functions") { fetchFunctions(session, objects, schemaName) }
-
-            // Fetch procedures
             fetchSafely("procedures") { fetchProcedures(session, objects, schemaName) }
-
-            // Fetch sequences
             fetchSafely("sequences") { fetchSequences(session, objects, schemaName) }
-
-            // Fetch triggers
             fetchSafely("triggers") { fetchTriggers(session, objects, schemaName) }
-
-            // Fetch materialized views
             fetchSafely("materialized views") { fetchMaterializedViews(session, objects, schemaName) }
-
-            // Fetch enum types
             fetchSafely("enum types") { fetchEnumTypes(session, objects, schemaName) }
-
-            // Fetch domains
             fetchSafely("domains") { fetchDomains(session, objects, schemaName) }
-
-            // Fetch extensions
             fetchSafely("extensions") { fetchExtensions(session, objects, schemaName) }
-
-            // Fetch policies
             fetchSafely("policies") { fetchPolicies(session, objects, schemaName) }
-
-            // Fetch comments
             fetchSafely("comments") { fetchComments(session, objects, schemaName) }
-
-            // Fetch rules
             fetchSafely("rules") { fetchRules(session, objects, schemaName) }
-
-            // Fetch foreign tables
             fetchSafely("foreign tables") { fetchForeignTables(session, objects, schemaName) }
-
-            // Fetch partitions
             fetchSafely("partitions") { fetchPartitions(session, objects, schemaName) }
-
-            // Fetch schema objects (when fetching all schemas)
             if (schemaName == null) {
                 fetchSafely("schemas") { fetchSchemaObjects(session, objects) }
             }
-
             // Global objects (only when fetching all schemas)
             if (schemaName == null) {
                 fetchSafely("tablespaces") { fetchTablespaces(session, objects) }
@@ -114,7 +80,6 @@ class PostgresSchemaComparator : SchemaComparator {
                 fetchSafely("casts") { fetchCasts(session, objects) }
                 fetchSafely("FTS configurations") { fetchFTSConfigurations(session, objects) }
             }
-
             logger.info { "Schema fetch complete: ${objects.size} total objects" }
             return DatabaseSchema(objects)
         }
@@ -129,6 +94,7 @@ class PostgresSchemaComparator : SchemaComparator {
             }
         }
 
+        /** Fetch tables with columns, indexes, constraints */
         private fun fetchTables(
             session: Session,
             objects: MutableList<DatabaseObject>,
@@ -225,7 +191,6 @@ class PostgresSchemaComparator : SchemaComparator {
             objects: MutableList<DatabaseObject>,
             schemaName: String? = null,
         ) {
-            // Fetch view definitions
             val schemaFilter = schemaName?.let { "AND table_schema = ?" } ?: ""
             val viewQuery =
                 """
@@ -280,7 +245,6 @@ class PostgresSchemaComparator : SchemaComparator {
             objects: MutableList<DatabaseObject>,
             schemaName: String? = null,
         ) {
-            // Fetch functions from pg_proc
             val schemaFilter = schemaName?.let { "AND n.nspname = ?" } ?: ""
             val functionQuery =
                 """
@@ -305,7 +269,6 @@ class PostgresSchemaComparator : SchemaComparator {
             objects: MutableList<DatabaseObject>,
             schemaName: String? = null,
         ) {
-            // Fetch procedures from pg_proc where prokind = 'p'
             val schemaFilter = schemaName?.let { "AND n.nspname = ?" } ?: ""
             val procedureQuery =
                 """
@@ -329,7 +292,6 @@ class PostgresSchemaComparator : SchemaComparator {
             objects: MutableList<DatabaseObject>,
             schemaName: String? = null,
         ) {
-            // Fetch sequences from information_schema.sequences
             val schemaFilter = schemaName?.let { "AND sequence_schema = ?" } ?: ""
             val sequenceQuery =
                 """

@@ -16,12 +16,9 @@ class EditConnectionSchemaAction : AnAction() {
         val project = e.project ?: return
         val service = DriftLocatorProjectService.getInstance(project)
         val toolWindowPanel = getToolWindowPanel(project)
-
         log.info("EditConnectionSchemaAction triggered")
 
-        // Get selected connection from the tool window panel
         val selectedConnections = toolWindowPanel?.getSelectedConnections() ?: emptyList()
-
         if (selectedConnections.size != 1) {
             log.warn("Invalid number of connections selected: ${selectedConnections.size}")
             Messages.showErrorDialog(
@@ -56,7 +53,7 @@ class EditConnectionSchemaAction : AnAction() {
             try {
                 service.updateConnection(connectionId, newConnection)
                 log.info("Connection '$connectionId' updated to: ${newConnection.name} (${newConnection.host}:${newConnection.port})")
-                // Validate the updated connection in background
+
                 validateConnectionInBackground(project, newConnection, service)
             } catch (e: IllegalArgumentException) {
                 log.warn("Failed to update connection: ${e.message}")

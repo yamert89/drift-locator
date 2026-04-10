@@ -2,9 +2,6 @@ package com.github.yamert89.postgresql
 
 import kotliquery.Row
 
-/**
- * Maps a database row to a [PostgresColumn].
- */
 fun Row.toPostgresColumn(): PostgresColumn =
     PostgresColumn(
         columnName = string("column_name"),
@@ -14,9 +11,6 @@ fun Row.toPostgresColumn(): PostgresColumn =
         ordinalPosition = int("ordinal_position"),
     )
 
-/**
- * Maps a database row to a [PostgresIndex].
- */
 fun Row.toPostgresIndex(): PostgresIndex =
     PostgresIndex(
         indexName = string("indexname"),
@@ -24,9 +18,6 @@ fun Row.toPostgresIndex(): PostgresIndex =
         isUnique = string("indexdef").contains("UNIQUE", ignoreCase = true),
     )
 
-/**
- * Maps a database row to a [PostgresConstraint].
- */
 fun Row.toPostgresConstraint(): PostgresConstraint {
     val constraintType = string("constraint_type")
     val columns = stringOrNull("columns") ?: ""
@@ -45,9 +36,6 @@ fun Row.toPostgresConstraint(): PostgresConstraint {
     )
 }
 
-/**
- * Maps a database row to a [PostgresFunction].
- */
 fun Row.toPostgresFunction(): PostgresFunction =
     PostgresFunction(
         schema = string("schema"),
@@ -57,9 +45,6 @@ fun Row.toPostgresFunction(): PostgresFunction =
         language = string("language"),
     )
 
-/**
- * Maps a database row to a [PostgresProcedure].
- */
 fun Row.toPostgresProcedure(): PostgresProcedure =
     PostgresProcedure(
         schema = string("schema"),
@@ -68,9 +53,6 @@ fun Row.toPostgresProcedure(): PostgresProcedure =
         language = string("language"),
     )
 
-/**
- * Maps a database row to a [PostgresSequence].
- */
 fun Row.toPostgresSequence(): PostgresSequence =
     PostgresSequence(
         schema = string("sequence_schema"),
@@ -80,9 +62,6 @@ fun Row.toPostgresSequence(): PostgresSequence =
         increment = long("increment"),
     )
 
-/**
- * Maps a database row to a [PostgresTrigger].
- */
 fun Row.toPostgresTrigger(): PostgresTrigger {
     val def = string("definition")
     // Parse trigger definition to extract timing, event, and function
@@ -115,9 +94,6 @@ fun Row.toPostgresTrigger(): PostgresTrigger {
     )
 }
 
-/**
- * Maps a database row to a [PostgresEnumType].
- */
 fun Row.toPostgresEnumType(): PostgresEnumType {
     val values = array<String>("enum_values").toList()
     return PostgresEnumType(
@@ -127,9 +103,6 @@ fun Row.toPostgresEnumType(): PostgresEnumType {
     )
 }
 
-/**
- * Maps a database row to a [PostgresDomain].
- */
 fun Row.toPostgresDomain(): PostgresDomain =
     PostgresDomain(
         schema = string("domain_schema"),
@@ -140,9 +113,6 @@ fun Row.toPostgresDomain(): PostgresDomain =
         checkConstraint = stringOrNull("check_constraint"),
     )
 
-/**
- * Maps a database row to a [PostgresExtension].
- */
 fun Row.toPostgresExtension(): PostgresExtension =
     PostgresExtension(
         pgObjectName = string("extname"),
@@ -150,9 +120,6 @@ fun Row.toPostgresExtension(): PostgresExtension =
         version = string("extversion"),
     )
 
-/**
- * Maps a database row to a [PostgresPolicy].
- */
 fun Row.toPostgresPolicy(): PostgresPolicy {
     val command =
         when (val commandChar = string("command")) {
@@ -176,9 +143,6 @@ fun Row.toPostgresPolicy(): PostgresPolicy {
     )
 }
 
-/**
- * Maps a database row to a [PostgresComment].
- */
 fun Row.toPostgresComment(): PostgresComment =
     PostgresComment(
         objectType = string("object_type"),
@@ -187,9 +151,6 @@ fun Row.toPostgresComment(): PostgresComment =
         comment = string("comment"),
     )
 
-/**
- * Maps a database row to a [PostgresRule].
- */
 fun Row.toPostgresRule(): PostgresRule =
     PostgresRule(
         schema = string("schema"),
@@ -199,9 +160,6 @@ fun Row.toPostgresRule(): PostgresRule =
         definition = string("definition"),
     )
 
-/**
- * Maps a database row to a [PostgresTablespace].
- */
 fun Row.toPostgresTablespace(): PostgresTablespace =
     PostgresTablespace(
         pgObjectName = string("tablespace_name"),
@@ -209,9 +167,6 @@ fun Row.toPostgresTablespace(): PostgresTablespace =
         options = null,
     )
 
-/**
- * Maps a database row to a [PostgresRole].
- */
 fun Row.toPostgresRole(): PostgresRole =
     PostgresRole(
         pgObjectName = string("role_name"),
@@ -222,18 +177,12 @@ fun Row.toPostgresRole(): PostgresRole =
         validUntil = stringOrNull("valid_until"),
     )
 
-/**
- * Maps a database row to a [PostgresSchemaObject].
- */
 fun Row.toPostgresSchemaObject(): PostgresSchemaObject =
     PostgresSchemaObject(
         schemaName = string("schema_name"),
         owner = string("owner"),
     )
 
-/**
- * Maps a database row to a [PostgresPublication].
- */
 fun Row.toPostgresPublication(): PostgresPublication {
     val tablesArray = array<String>("tables").toList()
     val publishOps = array<String>("publish_ops").toList().toSet()
@@ -245,9 +194,6 @@ fun Row.toPostgresPublication(): PostgresPublication {
     )
 }
 
-/**
- * Maps a database row to a [PostgresSubscription].
- */
 fun Row.toPostgresSubscription(): PostgresSubscription {
     val pubNames = array<String>("publication_names").toList()
     return PostgresSubscription(
@@ -258,9 +204,6 @@ fun Row.toPostgresSubscription(): PostgresSubscription {
     )
 }
 
-/**
- * Maps a database row to a [PostgresPartition].
- */
 fun Row.toPostgresPartition(): PostgresPartition =
     PostgresPartition(
         schema = string("schema"),
@@ -270,9 +213,6 @@ fun Row.toPostgresPartition(): PostgresPartition =
         partitionBound = stringOrNull("partition_bound") ?: "",
     )
 
-/**
- * Maps a database row to a [PostgresAggregate].
- */
 fun Row.toPostgresAggregate(): PostgresAggregate =
     PostgresAggregate(
         schema = string("schema"),
@@ -284,9 +224,6 @@ fun Row.toPostgresAggregate(): PostgresAggregate =
         initcond = stringOrNull("initcond"),
     )
 
-/**
- * Maps a database row to a [PostgresOperator].
- */
 fun Row.toPostgresOperator(): PostgresOperator =
     PostgresOperator(
         schema = string("schema"),
@@ -298,9 +235,6 @@ fun Row.toPostgresOperator(): PostgresOperator =
         negator = stringOrNull("negator"),
     )
 
-/**
- * Maps a database row to a [PostgresCast].
- */
 fun Row.toPostgresCast(): PostgresCast =
     PostgresCast(
         sourceType = string("source_type"),
@@ -309,9 +243,6 @@ fun Row.toPostgresCast(): PostgresCast =
         context = string("context"),
     )
 
-/**
- * Maps a database row to a [PostgresFTSConfiguration].
- */
 fun Row.toPostgresFTSConfiguration(): PostgresFTSConfiguration =
     PostgresFTSConfiguration(
         schema = string("schema"),
