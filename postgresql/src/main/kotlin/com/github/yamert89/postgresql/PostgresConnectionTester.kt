@@ -29,7 +29,7 @@ object PostgresConnectionTester {
         database: String,
         username: String,
         password: String?,
-    ): Boolean {
+    ): Result<Boolean> {
         val url = "jdbc:postgresql://$host:$port/$database"
         val passwordStatus = if (password.isNullOrEmpty()) "not set" else "set"
         logger.info {
@@ -51,11 +51,11 @@ object PostgresConnectionTester {
                 } else {
                     logger.warn { "Connection to $url returned invalid status" }
                 }
-                return isValid
+                return Result.success(isValid)
             }
         } catch (e: SQLException) {
-            logger.error(e) { "Connection to $url failed: ${e.message}" }
-            throw e
+            logger.warn(e) { "Connection to $url failed: ${e.message}" }
+            return Result.failure(e)
         }
     }
 }

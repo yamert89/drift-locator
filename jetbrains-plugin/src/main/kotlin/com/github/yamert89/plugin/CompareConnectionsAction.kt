@@ -3,6 +3,7 @@ package com.github.yamert89.plugin
 import com.github.yamert89.core.DatabaseSchema
 import com.github.yamert89.core.DiffExporter
 import com.github.yamert89.plugin.ui.DriftLocatorToolWindowPanel
+import com.github.yamert89.plugin.ui.notifyError
 import com.github.yamert89.plugin.ui.PasswordPromptDialog
 import com.github.yamert89.postgresql.PostgresConnectionManager
 import com.github.yamert89.postgresql.PostgresSchemaComparator
@@ -124,11 +125,7 @@ class CompareConnectionsAction : AnAction() {
         } catch (e: SQLException) {
             log.error("Error comparing schemas", e)
             ApplicationManager.getApplication().invokeLater {
-                Messages.showErrorDialog(
-                    project,
-                    "Error comparing schemas: ${e.message}",
-                    "Comparison Error",
-                )
+                project.notifyError("Error comparing schemas: ${e.message}")
             }
         }
     }
