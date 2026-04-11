@@ -75,9 +75,8 @@ class CompareConnectionsAction : AnAction() {
             return
         }
 
-        // Check if passwords are needed (only if user chose not to save password)
-        val sourceNeedsPassword = !sourceConnection.savePassword
-        val targetNeedsPassword = !targetConnection.savePassword
+        val sourceNeedsPassword = sourceConnection.password.isNullOrBlank()
+        val targetNeedsPassword = targetConnection.password.isNullOrBlank()
 
         var finalSourceConnection = sourceConnection
         var finalTargetConnection = targetConnection

@@ -54,7 +54,7 @@ object PostgresConnectionManager {
             logger.debug { "Connection created successfully" }
             conn
         } catch (e: SQLException) {
-            logger.error(e) { "Failed to create connection to $url: ${e.message}" }
+            logger.warn(e) { "Failed to create connection to $url: ${e.message}" }
             throw e
         }
     }

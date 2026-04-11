@@ -27,8 +27,8 @@ class PasswordPromptDialog(
 
     override fun createCenterPanel(): JComponent =
         panel {
-            val sourceNeedsPassword = sourceConnection.savePassword && sourceConnection.password.isNullOrBlank()
-            val targetNeedsPassword = targetConnection.savePassword && targetConnection.password.isNullOrBlank()
+            val sourceNeedsPassword = sourceConnection.password.isNullOrBlank()
+            val targetNeedsPassword = targetConnection.password.isNullOrBlank()
 
             if (sourceNeedsPassword) {
                 row("${sourceConnection.name} password:") {
@@ -44,11 +44,6 @@ class PasswordPromptDialog(
                 }
             }
 
-            if (!sourceNeedsPassword && !targetNeedsPassword) {
-                row {
-                    label("No passwords required for these connections.")
-                }
-            }
         }
 
     fun getSourcePassword(): String? = sourcePasswordField.getPassword(sourceConnection)
