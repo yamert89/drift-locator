@@ -1,4 +1,12 @@
 # Drift Locator Changelog
+## [1.1.0]
+
+### Added
+- Option to save passwords via IntelliJ Platform's PasswordSafe
+- Minor improvements
+
+### Fixed
+- Incorrect query for materialized view
 
 ## [1.0.0]
 
