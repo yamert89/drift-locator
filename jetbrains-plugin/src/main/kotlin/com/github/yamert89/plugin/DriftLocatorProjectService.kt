@@ -149,8 +149,7 @@ class DriftLocatorProjectService(private val project: Project) {
      * Returns the directory for storing plugin system data (.driftLocator/system).
      */
     fun getSystemDir(): File {
-        val baseDir = File(project.basePath, ".driftLocator")
-        val systemDir = File(baseDir, "system")
+        val systemDir = getSystemDirPath()
         systemDir.mkdirs()
         return systemDir
     }
@@ -159,9 +158,20 @@ class DriftLocatorProjectService(private val project: Project) {
 
     fun getLastConnection(): DatabaseConnection? = lastConnection
 
-    private fun getConnectionsFile(): File = File(getSystemDir(), "connections.json")
+    private fun getSystemDirPath(): File {
+        val baseDir = File(project.basePath, ".driftLocator")
+        return File(baseDir, "system")
+    }
 
-    private fun getLastConnectionFile(): File = File(getSystemDir(), "last-connection.json")
+    private fun getConnectionsFile(createDirectory: Boolean = false): File {
+        val systemDir = if (createDirectory) getSystemDir() else getSystemDirPath()
+        return File(systemDir, "connections.json")
+    }
+
+    private fun getLastConnectionFile(createDirectory: Boolean = false): File {
+        val systemDir = if (createDirectory) getSystemDir() else getSystemDirPath()
+        return File(systemDir, "last-connection.json")
+    }
 
     private fun saveConnections() {
         try {
@@ -175,7 +185,7 @@ class DriftLocatorProjectService(private val project: Project) {
                     ListSerializer(serializer<DatabaseConnection>()),
                     connectionsList,
                 )
-            getConnectionsFile().writeText(jsonString)
+            getConnectionsFile(createDirectory = true).writeText(jsonString)
         } catch (e: IOException) {
             LOG.warn("Failed to save connections: ${e.message}")
         }
@@ -265,7 +275,7 @@ class DriftLocatorProjectService(private val project: Project) {
                 // Save without password (password stays in secure storage)
                 val connectionWithoutPassword = last.copy().apply { password = null }
                 val jsonString = json.encodeToString(serializer<DatabaseConnection>(), connectionWithoutPassword)
-                getLastConnectionFile().writeText(jsonString)
+                getLastConnectionFile(createDirectory = true).writeText(jsonString)
             } else {
                 getLastConnectionFile().delete()
             }
