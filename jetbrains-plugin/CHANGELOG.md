@@ -1,4 +1,9 @@
 # Drift Locator Changelog
+## [1.1.1]
+
+### Fixed
+- Unexpected creation of a system directory
+
 ## [1.1.0]
 
 ### Added

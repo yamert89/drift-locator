@@ -115,7 +115,6 @@ performance:
     active: true
   SpreadOperator:
     active: true
-    excludes: [ '**/FlowixService.kt', '**/FlowixToolWindowFactory.kt', '**/MockDialog.kt' ]
 exceptions:
   TooGenericExceptionCaught:
     active: true
