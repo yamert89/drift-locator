@@ -63,6 +63,7 @@ class PostgresSchemaComparator : SchemaComparator {
             fetchSafely("extensions") { fetchExtensions(session, objects, schemaName) }
             fetchSafely("policies") { fetchPolicies(session, objects, schemaName) }
             fetchSafely("comments") { fetchComments(session, objects, schemaName) }
+            fetchSafely("grants") { fetchGrants(session, objects, schemaName) }
             fetchSafely("rules") { fetchRules(session, objects, schemaName) }
             fetchSafely("foreign tables") { fetchForeignTables(session, objects, schemaName) }
             fetchSafely("partitions") { fetchPartitions(session, objects, schemaName) }
@@ -129,7 +130,7 @@ class PostgresSchemaComparator : SchemaComparator {
                 """
                 SELECT table_schema, table_name, column_name, data_type, is_nullable, column_default, ordinal_position
                 FROM information_schema.columns
-                WHERE table_schema NOT IN ('pg_catalog', 'information_schema') $schemaFilter
+                WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_toast') $schemaFilter
                 ORDER BY table_schema, table_name, ordinal_position
                 """.trimIndent()
             val query = schemaName?.let { queryOf(columnQuery, it) } ?: queryOf(columnQuery)
@@ -144,12 +145,22 @@ class PostgresSchemaComparator : SchemaComparator {
 
         private fun fetchIndexes(session: Session, schemaName: String? = null): Map<Pair<String, String>, List<PostgresIndex>> {
             val indexesByTable = mutableMapOf<Pair<String, String>, MutableList<PostgresIndex>>()
-            val schemaFilter = schemaName?.let { "AND schemaname = ?" } ?: ""
+            val schemaFilter = schemaName?.let { "AND ns.nspname = ?" } ?: ""
             val indexQuery =
                 """
-                SELECT schemaname, tablename, indexname, indexdef
-                FROM pg_indexes
-                WHERE schemaname NOT IN ('pg_catalog', 'information_schema') $schemaFilter
+                SELECT ns.nspname AS schemaname,
+                       tbl.relname AS tablename,
+                       idx.relname AS indexname,
+                       pg_get_indexdef(i.indexrelid) AS indexdef,
+                       am.amname AS access_method,
+                       pg_get_expr(i.indpred, i.indrelid) AS predicate,
+                       i.indexprs IS NOT NULL AS is_expression_based
+                FROM pg_index i
+                JOIN pg_class idx ON idx.oid = i.indexrelid
+                JOIN pg_class tbl ON tbl.oid = i.indrelid
+                JOIN pg_namespace ns ON ns.oid = tbl.relnamespace
+                JOIN pg_am am ON am.oid = idx.relam
+                WHERE ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast') $schemaFilter
                 """.trimIndent()
             val query = schemaName?.let { queryOf(indexQuery, it) } ?: queryOf(indexQuery)
             session.forEach(query) { row ->
@@ -163,18 +174,48 @@ class PostgresSchemaComparator : SchemaComparator {
 
         private fun fetchConstraints(session: Session, schemaName: String? = null): Map<Pair<String, String>, List<PostgresConstraint>> {
             val constraintsByTable = mutableMapOf<Pair<String, String>, MutableList<PostgresConstraint>>()
-            val schemaFilter = schemaName?.let { "AND tc.table_schema = ?" } ?: ""
+            val schemaFilter = schemaName?.let { "AND src_ns.nspname = ?" } ?: ""
             val constraintQuery =
                 """
-                SELECT tc.table_schema, tc.table_name, tc.constraint_name, tc.constraint_type,
-                       string_agg(kcu.column_name, ',' ORDER BY kcu.ordinal_position) AS columns
-                FROM information_schema.table_constraints tc
-                LEFT JOIN information_schema.key_column_usage kcu
-                    ON tc.constraint_name = kcu.constraint_name
-                    AND tc.table_schema = kcu.table_schema
-                    AND tc.table_name = kcu.table_name
-                WHERE tc.table_schema NOT IN ('pg_catalog', 'information_schema') $schemaFilter
-                GROUP BY tc.table_schema, tc.table_name, tc.constraint_name, tc.constraint_type
+                SELECT src_ns.nspname AS table_schema,
+                       src.relname AS table_name,
+                       con.conname AS constraint_name,
+                       CASE con.contype
+                           WHEN 'p' THEN 'PRIMARY KEY'
+                           WHEN 'f' THEN 'FOREIGN KEY'
+                           WHEN 'u' THEN 'UNIQUE'
+                           WHEN 'c' THEN 'CHECK'
+                           ELSE con.contype::text
+                       END AS constraint_type,
+                       (
+                           SELECT string_agg(att.attname, ',' ORDER BY key_positions.ordinality)
+                           FROM unnest(con.conkey) WITH ORDINALITY AS key_positions(attnum, ordinality)
+                           JOIN pg_attribute att
+                             ON att.attrelid = con.conrelid
+                            AND att.attnum = key_positions.attnum
+                       ) AS columns,
+                       CASE
+                           WHEN con.confrelid = 0 THEN NULL
+                           ELSE ref_ns.nspname || '.' || ref.relname
+                       END AS referenced_table,
+                       (
+                           SELECT string_agg(att.attname, ',' ORDER BY key_positions.ordinality)
+                           FROM unnest(con.confkey) WITH ORDINALITY AS key_positions(attnum, ordinality)
+                           JOIN pg_attribute att
+                             ON att.attrelid = con.confrelid
+                            AND att.attnum = key_positions.attnum
+                       ) AS referenced_columns,
+                       CASE
+                           WHEN con.contype = 'c' THEN pg_get_constraintdef(con.oid, true)
+                           ELSE NULL
+                       END AS check_clause,
+                       pg_get_constraintdef(con.oid, true) AS definition
+                FROM pg_constraint con
+                JOIN pg_class src ON src.oid = con.conrelid
+                JOIN pg_namespace src_ns ON src_ns.oid = src.relnamespace
+                LEFT JOIN pg_class ref ON ref.oid = con.confrelid
+                LEFT JOIN pg_namespace ref_ns ON ref_ns.oid = ref.relnamespace
+                WHERE src_ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast') $schemaFilter
                 """.trimIndent()
             val query = schemaName?.let { queryOf(constraintQuery, it) } ?: queryOf(constraintQuery)
             session.forEach(query) { row ->
@@ -194,16 +235,18 @@ class PostgresSchemaComparator : SchemaComparator {
             val schemaFilter = schemaName?.let { "AND table_schema = ?" } ?: ""
             val viewQuery =
                 """
-                SELECT table_schema, table_name
-                FROM information_schema.views
+                SELECT views.table_schema,
+                       views.table_name,
+                       pg_get_viewdef((quote_ident(views.table_schema) || '.' || quote_ident(views.table_name))::regclass, true) AS definition
+                FROM information_schema.views views
                 WHERE table_schema NOT IN ('pg_catalog', 'information_schema') $schemaFilter
                 """.trimIndent()
             val viewQueryObj = schemaName?.let { queryOf(viewQuery, it) } ?: queryOf(viewQuery)
-            val views = mutableListOf<Pair<String, String>>()
+            val views = mutableListOf<Triple<String, String, String?>>()
             session.forEach(viewQueryObj) { row ->
                 val schema = row.string("table_schema")
                 val viewName = row.string("table_name")
-                views.add(schema to viewName)
+                views.add(Triple(schema, viewName, row.stringOrNull("definition")))
             }
 
             // Fetch columns for views
@@ -228,13 +271,14 @@ class PostgresSchemaComparator : SchemaComparator {
             }
 
             // Create view objects
-            for ((schema, viewName) in views) {
+            for ((schema, viewName, definition) in views) {
                 val columns = columnsByView[schema to viewName] ?: emptyList()
                 objects.add(
                     PostgresView(
                         schema = schema,
                         pgObjectName = viewName,
                         columns = columns,
+                        definition = definition,
                     ),
                 )
             }
@@ -249,9 +293,11 @@ class PostgresSchemaComparator : SchemaComparator {
             val functionQuery =
                 """
                 SELECT n.nspname AS schema, p.proname AS function_name,
+                       pg_get_function_identity_arguments(p.oid) AS identity_arguments,
                        pg_get_function_result(p.oid) AS return_type,
                        pg_get_function_arguments(p.oid) AS arguments,
-                       l.lanname AS language
+                       l.lanname AS language,
+                       pg_get_functiondef(p.oid) AS definition
                 FROM pg_proc p
                 JOIN pg_namespace n ON p.pronamespace = n.oid
                 JOIN pg_language l ON p.prolang = l.oid
@@ -273,8 +319,10 @@ class PostgresSchemaComparator : SchemaComparator {
             val procedureQuery =
                 """
                 SELECT n.nspname AS schema, p.proname AS procedure_name,
+                       pg_get_function_identity_arguments(p.oid) AS identity_arguments,
                        pg_get_function_arguments(p.oid) AS arguments,
-                       l.lanname AS language
+                       l.lanname AS language,
+                       pg_get_functiondef(p.oid) AS definition
                 FROM pg_proc p
                 JOIN pg_namespace n ON p.pronamespace = n.oid
                 JOIN pg_language l ON p.prolang = l.oid
@@ -316,10 +364,30 @@ class PostgresSchemaComparator : SchemaComparator {
                 SELECT n.nspname AS schema,
                        t.tgname AS trigger_name,
                        c.relname AS table_name,
+                       CASE
+                           WHEN (t.tgtype & 2) <> 0 THEN 'BEFORE'
+                           WHEN (t.tgtype & 64) <> 0 THEN 'INSTEAD OF'
+                           ELSE 'AFTER'
+                       END AS timing,
+                       array_to_string(
+                           array_remove(
+                               ARRAY[
+                                   CASE WHEN (t.tgtype & 4) <> 0 THEN 'INSERT' END,
+                                   CASE WHEN (t.tgtype & 8) <> 0 THEN 'DELETE' END,
+                                   CASE WHEN (t.tgtype & 16) <> 0 THEN 'UPDATE' END,
+                                   CASE WHEN (t.tgtype & 32) <> 0 THEN 'TRUNCATE' END
+                               ],
+                               NULL
+                           ),
+                           ','
+                       ) AS events,
+                       fn_ns.nspname || '.' || fn.proname AS function_name,
                        pg_get_triggerdef(t.oid) AS definition
                 FROM pg_trigger t
                 JOIN pg_class c ON t.tgrelid = c.oid
                 JOIN pg_namespace n ON c.relnamespace = n.oid
+                JOIN pg_proc fn ON fn.oid = t.tgfoid
+                JOIN pg_namespace fn_ns ON fn_ns.oid = fn.pronamespace
                 WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') $schemaFilter
                   AND NOT t.tgisinternal
                 """.trimIndent()
@@ -337,20 +405,22 @@ class PostgresSchemaComparator : SchemaComparator {
             val schemaFilter = schemaName?.let { "AND n.nspname = ?" } ?: ""
             val matViewQuery =
                 """
-                SELECT n.nspname AS schema, c.relname AS matview_name
+                SELECT n.nspname AS schema,
+                       c.relname AS matview_name,
+                       pg_get_viewdef(c.oid, true) AS definition
                 FROM pg_class c
                 JOIN pg_namespace n ON c.relnamespace = n.oid
                 WHERE c.relkind = 'm'
                   AND n.nspname NOT IN ('pg_catalog', 'information_schema') $schemaFilter
                 """.trimIndent()
             val query = schemaName?.let { queryOf(matViewQuery, it) } ?: queryOf(matViewQuery)
-            val matViews = mutableListOf<Pair<String, String>>()
+            val matViews = mutableListOf<Triple<String, String, String?>>()
             session.forEach(query) { row ->
-                matViews.add(row.string("schema") to row.string("matview_name"))
+                matViews.add(Triple(row.string("schema"), row.string("matview_name"), row.stringOrNull("definition")))
             }
 
             // Fetch columns for each materialized view using pg_catalog
-            for ((schema, name) in matViews) {
+            for ((schema, name, definition) in matViews) {
                 val columnQuery =
                     """
                     SELECT a.attname AS column_name,
@@ -377,7 +447,7 @@ class PostgresSchemaComparator : SchemaComparator {
                         schema = schema,
                         pgObjectName = name,
                         columns = columns,
-                        definition = null,
+                        definition = definition,
                     ),
                 )
             }
@@ -438,14 +508,15 @@ class PostgresSchemaComparator : SchemaComparator {
             objects: MutableList<DatabaseObject>,
             schemaName: String? = null,
         ) {
-            // Extensions are database-wide but have a schema where objects are created
+            val schemaFilter = schemaName?.let { "WHERE n.nspname = ?" } ?: ""
             val extensionQuery =
                 """
                 SELECT e.extname, e.extversion, n.nspname AS extnamespace
                 FROM pg_extension e
                 JOIN pg_namespace n ON e.extnamespace = n.oid
+                $schemaFilter
                 """.trimIndent()
-            val query = queryOf(extensionQuery)
+            val query = schemaName?.let { queryOf(extensionQuery, it) } ?: queryOf(extensionQuery)
             session.forEach(query) { row ->
                 objects.add(row.toPostgresExtension())
             }
@@ -520,6 +591,42 @@ class PostgresSchemaComparator : SchemaComparator {
             val query = schemaName?.let { queryOf(commentQuery, it, it) } ?: queryOf(commentQuery)
             session.forEach(query) { row ->
                 objects.add(row.toPostgresComment())
+            }
+        }
+
+        private fun fetchGrants(
+            session: Session,
+            objects: MutableList<DatabaseObject>,
+            schemaName: String? = null,
+        ) {
+            val schemaFilter =
+                schemaName?.let { "AND table_schema = ?" }
+                    ?: "AND table_schema NOT IN ('pg_catalog', 'information_schema')"
+            val grantQuery =
+                """
+                SELECT grantor,
+                       grantee,
+                       'TABLE' AS object_type,
+                       table_schema AS object_schema,
+                       table_name AS object_name,
+                       privilege_type AS privilege,
+                       is_grantable = 'YES' AS is_grantable
+                FROM information_schema.role_table_grants
+                WHERE 1 = 1 $schemaFilter
+                """.trimIndent()
+            val query = schemaName?.let { queryOf(grantQuery, it) } ?: queryOf(grantQuery)
+            session.forEach(query) { row ->
+                objects.add(
+                    PostgresGrant(
+                        grantor = row.string("grantor"),
+                        grantee = row.string("grantee"),
+                        objectType = row.string("object_type"),
+                        objectSchema = row.string("object_schema"),
+                        targetObjectName = row.string("object_name"),
+                        privilege = row.string("privilege"),
+                        isGrantable = row.boolean("is_grantable"),
+                    ),
+                )
             }
         }
 
@@ -660,12 +767,12 @@ class PostgresSchemaComparator : SchemaComparator {
                 """
                 SELECT p.pubname AS publication_name,
                        p.puballtables AS for_all_tables,
-                       ARRAY[
+                       array_remove(ARRAY[
                            CASE WHEN p.pubinsert THEN 'insert' END,
                            CASE WHEN p.pubupdate THEN 'update' END,
                            CASE WHEN p.pubdelete THEN 'delete' END,
                            CASE WHEN p.pubtruncate THEN 'truncate' END
-                       ] AS publish_ops,
+                       ], NULL) AS publish_ops,
                        COALESCE(
                            ARRAY_AGG(
                                CASE WHEN pr.prrelid IS NOT NULL 
@@ -689,7 +796,12 @@ class PostgresSchemaComparator : SchemaComparator {
             val subscriptionQuery =
                 """
                 SELECT subname AS subscription_name,
-                       subconninfo AS connection_info,
+                       regexp_replace(
+                           regexp_replace(subconninfo, '(?i)password=[^[:space:]]+', 'password=****', 'g'),
+                           '(?i)passfile=[^[:space:]]+',
+                           'passfile=****',
+                           'g'
+                       ) AS connection_info_masked,
                        subpublications AS publication_names,
                        subenabled AS enabled
                 FROM pg_subscription
@@ -731,6 +843,7 @@ class PostgresSchemaComparator : SchemaComparator {
                 """
                 SELECT n.nspname AS schema,
                        p.proname AS aggregate_name,
+                       pg_get_function_identity_arguments(p.oid) AS identity_arguments,
                        pg_get_function_arguments(p.oid) AS argument_types,
                        t.typname AS state_type,
                        sf.proname AS sfunc,
@@ -801,7 +914,22 @@ class PostgresSchemaComparator : SchemaComparator {
                 """
                 SELECT n.nspname AS schema,
                        c.cfgname AS config_name,
-                       p.prsname AS parser
+                       p.prsname AS parser,
+                       (
+                           SELECT string_agg(
+                               token_alias || '=' || dictionary_names,
+                               '; ' ORDER BY token_alias
+                           )
+                           FROM (
+                               SELECT m.alias AS token_alias,
+                                      array_to_string(array_agg(d.dictname ORDER BY map.mapseqno), ',') AS dictionary_names
+                               FROM pg_ts_config_map map
+                               JOIN pg_ts_dict d ON d.oid = map.mapdict
+                               JOIN ts_token_type(c.cfgparser) m ON m.tokid = map.maptokentype
+                               WHERE map.mapcfg = c.oid
+                               GROUP BY m.alias
+                           ) mappings
+                       ) AS dictionary_mappings
                 FROM pg_ts_config c
                 JOIN pg_namespace n ON c.cfgnamespace = n.oid
                 JOIN pg_ts_parser p ON c.cfgparser = p.oid

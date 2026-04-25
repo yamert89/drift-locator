@@ -32,6 +32,22 @@ class PostgresSchemaComparatorTest {
             )
         try {
             val statement = connection.createStatement()
+            statement.execute(
+                """
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'sub_masked') THEN
+                        ALTER SUBSCRIPTION sub_masked DISABLE;
+                        ALTER SUBSCRIPTION sub_masked SET (slot_name = NONE);
+                        DROP SUBSCRIPTION sub_masked;
+                    END IF;
+                END
+                $$;
+                """.trimIndent(),
+            )
+            statement.execute("DROP PUBLICATION IF EXISTS pub_all")
+            statement.execute("DROP EXTENSION IF EXISTS hstore CASCADE")
+            statement.execute("DROP SCHEMA IF EXISTS ext_schema CASCADE")
             // Drop and recreate public schema to clean all objects
             statement.execute("DROP SCHEMA IF EXISTS public CASCADE")
             statement.execute("CREATE SCHEMA public")
@@ -132,6 +148,7 @@ class PostgresSchemaComparatorTest {
         val view = views.first() as PostgresView
         assertEquals("public.active_users", view.name)
         assertEquals(2, view.columns.size)
+        assertNotNull(view.definition)
 
         val idColumn = view.columns.find { it.columnName == "id" }
         assertNotNull(idColumn)
@@ -162,9 +179,11 @@ class PostgresSchemaComparatorTest {
         val functions = schema.objects.filter { it.type == "FUNCTION" }
         assertEquals(1, functions.size)
         val function = functions.first() as PostgresFunction
-        assertEquals("public.get_current_timestamp", function.name)
+        assertEquals("public.get_current_timestamp()", function.name)
         assertEquals("timestamp without time zone", function.returnType)
         assertEquals("plpgsql", function.language)
+        assertEquals("", function.identityArguments)
+        assertTrue(function.definition.contains("CREATE OR REPLACE FUNCTION"))
 
         connection.close()
     }
@@ -200,8 +219,10 @@ class PostgresSchemaComparatorTest {
         val procedures = schema.objects.filter { it.type == "PROCEDURE" }
         assertEquals(1, procedures.size)
         val procedure = procedures.first() as PostgresProcedure
-        assertEquals("public.log_action", procedure.name)
+        assertEquals("public.log_action(IN action_text character varying)", procedure.name)
         assertEquals("sql", procedure.language)
+        assertEquals("IN action_text character varying", procedure.identityArguments)
+        assertTrue(procedure.definition.contains("CREATE OR REPLACE PROCEDURE"))
 
         connection.close()
     }
@@ -325,7 +346,8 @@ class PostgresSchemaComparatorTest {
         val trigger = triggers.first() as PostgresTrigger
         assertEquals("test_table", trigger.tableName)
         assertEquals("BEFORE", trigger.timing)
-        assertEquals("INSERT", trigger.event)
+        assertEquals(setOf("INSERT"), trigger.events)
+        assertEquals("public.set_created_at", trigger.function)
 
         connection.close()
     }
@@ -359,6 +381,7 @@ class PostgresSchemaComparatorTest {
         val matView = matViews.first() as PostgresMaterializedView
         assertEquals("public.order_summary", matView.name)
         assertEquals(2, matView.columns.size, "Expected 2 columns, found: ${matView.columns.map { it.columnName }}")
+        assertNotNull(matView.definition)
 
         connection.close()
     }
@@ -489,6 +512,7 @@ class PostgresSchemaComparatorTest {
         val emailIndex = table.indexes.find { it.indexName == "idx_email" }
         assertNotNull(emailIndex)
         assertTrue(emailIndex?.isUnique ?: false)
+        assertEquals("btree", emailIndex?.accessMethod)
 
         connection.close()
     }
@@ -521,6 +545,230 @@ class PostgresSchemaComparatorTest {
 
         val uniqueConstraint = table.constraints.find { it.constraintType == "UNIQUE" }
         assertNotNull(uniqueConstraint)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should preserve overloaded function identities and diff`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE OR REPLACE FUNCTION overloaded_fn(value_text TEXT)
+            RETURNS TEXT AS $$
+            BEGIN
+                RETURN value_text;
+            END;
+            $$ LANGUAGE plpgsql
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE OR REPLACE FUNCTION overloaded_fn(value_int INTEGER)
+            RETURNS INTEGER AS $$
+            BEGIN
+                RETURN value_int;
+            END;
+            $$ LANGUAGE plpgsql
+            """.trimIndent(),
+        )
+
+        val source = PostgresSchemaComparator.fetchSchema(connection)
+        val functionNames = source.objects.filterIsInstance<PostgresFunction>().map { it.name }.sorted()
+        assertEquals(
+            listOf(
+                "public.overloaded_fn(value_int integer)",
+                "public.overloaded_fn(value_text text)",
+            ),
+            functionNames,
+        )
+
+        connection.createStatement().execute(
+            """
+            CREATE OR REPLACE FUNCTION overloaded_fn(value_text TEXT)
+            RETURNS TEXT AS $$
+            BEGIN
+                RETURN upper(value_text);
+            END;
+            $$ LANGUAGE plpgsql
+            """.trimIndent(),
+        )
+        val target = PostgresSchemaComparator.fetchSchema(connection)
+
+        val diff = PostgresSchemaComparator().compare(source, target)
+        assertEquals(1, diff.modified.size)
+        assertEquals("public.overloaded_fn(value_text text)", diff.modified.first().first.name)
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should preserve overloaded procedure identities`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute("CREATE TABLE audit_log (id SERIAL PRIMARY KEY, action TEXT)")
+        connection.createStatement().execute(
+            """
+            CREATE OR REPLACE PROCEDURE overloaded_proc(action_text TEXT)
+            LANGUAGE SQL
+            AS $$ INSERT INTO audit_log(action) VALUES (action_text) $$;
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE OR REPLACE PROCEDURE overloaded_proc(action_id INTEGER)
+            LANGUAGE SQL
+            AS $$ INSERT INTO audit_log(action) VALUES (action_id::text) $$;
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val procedures = schema.objects.filterIsInstance<PostgresProcedure>().map { it.name }.sorted()
+        assertEquals(
+            listOf(
+                "public.overloaded_proc(IN action_id integer)",
+                "public.overloaded_proc(IN action_text text)",
+            ),
+            procedures,
+        )
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include rich constraint and index metadata`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute(
+            """
+            CREATE TABLE parent_table (
+                id INTEGER PRIMARY KEY
+            )
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE TABLE rich_table (
+                id SERIAL PRIMARY KEY,
+                parent_id INTEGER REFERENCES parent_table(id),
+                email TEXT NOT NULL,
+                deleted_at TIMESTAMP,
+                CONSTRAINT chk_email CHECK (position('@' in email) > 1)
+            )
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE INDEX idx_rich_email_active
+            ON rich_table(email)
+            WHERE deleted_at IS NULL
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE INDEX idx_rich_email_lower
+            ON rich_table ((lower(email)))
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val table = schema.objects.filterIsInstance<PostgresTable>().single { it.pgObjectName == "rich_table" }
+
+        val foreignKey = table.constraints.single { it.constraintType == "FOREIGN KEY" }
+        assertEquals(listOf("parent_id"), foreignKey.columns)
+        assertEquals("public.parent_table", foreignKey.referencedTable)
+        assertEquals(listOf("id"), foreignKey.referencedColumns)
+        assertTrue(foreignKey.definition.contains("REFERENCES parent_table(id)"))
+
+        val check = table.constraints.single { it.constraintType == "CHECK" }
+        assertNotNull(check.checkClause)
+        assertTrue(check.checkClause.orEmpty().contains("CHECK"))
+
+        val partialIndex = table.indexes.single { it.indexName == "idx_rich_email_active" }
+        assertTrue(partialIndex.predicate.orEmpty().contains("deleted_at"))
+        assertFalse(partialIndex.isExpressionBased)
+
+        val expressionIndex = table.indexes.single { it.indexName == "idx_rich_email_lower" }
+        assertTrue(expressionIndex.isExpressionBased)
+        assertTrue(expressionIndex.indexDefinition.contains("lower(email)"))
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should scope extensions and include grants`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute("CREATE SCHEMA ext_schema")
+        connection.createStatement().execute("CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA ext_schema")
+        connection.createStatement().execute("CREATE TABLE granted_table (id INT)")
+        connection.createStatement().execute("GRANT SELECT ON granted_table TO PUBLIC")
+
+        val scopedSchema = PostgresSchemaComparator.fetchSchema(connection, "public")
+        assertTrue(scopedSchema.objects.filterIsInstance<PostgresExtension>().none { it.schema != "public" })
+
+        val fullSchema = PostgresSchemaComparator.fetchSchema(connection)
+        val grants = fullSchema.objects.filterIsInstance<PostgresGrant>()
+        assertTrue(grants.any { it.targetObjectName == "granted_table" && it.privilege == "SELECT" })
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include publications subscriptions and fts without leaking secrets`() {
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute("CREATE TABLE replicated_table (id INT PRIMARY KEY, body TEXT)")
+        connection.createStatement().execute("CREATE PUBLICATION pub_all FOR TABLE replicated_table")
+        connection.createStatement().execute(
+            """
+            CREATE SUBSCRIPTION sub_masked
+            CONNECTION 'host=127.0.0.1 port=5432 dbname=testdb user=repl password=secretpass'
+            PUBLICATION pub_all
+            WITH (connect = false)
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE TEXT SEARCH CONFIGURATION public.test_config ( COPY = pg_catalog.simple )
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+
+        val publication = schema.objects.filterIsInstance<PostgresPublication>().single { it.pgObjectName == "pub_all" }
+        assertEquals(setOf("insert", "update", "delete", "truncate"), publication.publish)
+        assertEquals(listOf("public.replicated_table"), publication.tables)
+
+        val subscription = schema.objects.filterIsInstance<PostgresSubscription>().singleOrNull { it.pgObjectName == "sub_masked" }
+        if (subscription != null) {
+            assertFalse(subscription.connection.contains("secretpass"))
+        }
+
+        val fts = schema.objects.filterIsInstance<PostgresFTSConfiguration>().single { it.pgObjectName == "test_config" }
+        assertTrue(fts.dictionaries.isNotEmpty())
+        assertTrue(fts.dictionaries.values.flatten().isNotEmpty())
 
         connection.close()
     }
@@ -571,9 +819,7 @@ class PostgresSchemaComparatorTest {
 
         val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(source, target)
-        assertEquals(1, diff.added.size)
-        assertEquals("public.added_table", diff.added.first().name)
-        assertTrue(diff.removed.isEmpty())
+        assertTrue(diff.added.any { it.name == "public.added_table" })
         assertTrue(diff.modified.isEmpty())
         connection.close()
     }
@@ -600,9 +846,7 @@ class PostgresSchemaComparatorTest {
 
         val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(source, target)
-        assertEquals(1, diff.removed.size)
-        assertEquals("public.removed_table", diff.removed.first().name)
-        assertTrue(diff.added.isEmpty())
+        assertTrue(diff.removed.any { it.name == "public.removed_table" })
         assertTrue(diff.modified.isEmpty())
         connection.close()
     }

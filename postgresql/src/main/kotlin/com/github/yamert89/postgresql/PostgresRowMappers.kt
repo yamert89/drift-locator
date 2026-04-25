@@ -16,41 +16,41 @@ fun Row.toPostgresIndex(): PostgresIndex =
         indexName = string("indexname"),
         indexDefinition = string("indexdef"),
         isUnique = string("indexdef").contains("UNIQUE", ignoreCase = true),
+        accessMethod = stringOrNull("access_method"),
+        predicate = stringOrNull("predicate"),
+        isExpressionBased = boolean("is_expression_based"),
     )
 
-fun Row.toPostgresConstraint(): PostgresConstraint {
-    val constraintType = string("constraint_type")
-    val columns = stringOrNull("columns") ?: ""
-    val definition =
-        when (constraintType) {
-            "PRIMARY KEY" -> "PRIMARY KEY ($columns)"
-            "FOREIGN KEY" -> "FOREIGN KEY ($columns) REFERENCES ..." // simplified
-            "UNIQUE" -> "UNIQUE ($columns)"
-            "CHECK" -> "CHECK (...)" // we could fetch check clause from pg_constraint
-            else -> constraintType
-        }
-    return PostgresConstraint(
+fun Row.toPostgresConstraint(): PostgresConstraint =
+    PostgresConstraint(
         constraintName = string("constraint_name"),
-        constraintType = constraintType,
-        definition = definition,
+        constraintType = string("constraint_type"),
+        columns = splitCsv(stringOrNull("columns")),
+        referencedTable = stringOrNull("referenced_table"),
+        referencedColumns = splitCsv(stringOrNull("referenced_columns")),
+        checkClause = stringOrNull("check_clause"),
+        definition = string("definition"),
     )
-}
 
 fun Row.toPostgresFunction(): PostgresFunction =
     PostgresFunction(
         schema = string("schema"),
         pgObjectName = string("function_name"),
+        identityArguments = string("identity_arguments"),
         returnType = string("return_type"),
         arguments = string("arguments"),
         language = string("language"),
+        definition = string("definition"),
     )
 
 fun Row.toPostgresProcedure(): PostgresProcedure =
     PostgresProcedure(
         schema = string("schema"),
         pgObjectName = string("procedure_name"),
+        identityArguments = string("identity_arguments"),
         arguments = string("arguments"),
         language = string("language"),
+        definition = string("definition"),
     )
 
 fun Row.toPostgresSequence(): PostgresSequence =
@@ -62,37 +62,16 @@ fun Row.toPostgresSequence(): PostgresSequence =
         increment = long("increment"),
     )
 
-fun Row.toPostgresTrigger(): PostgresTrigger {
-    val def = string("definition")
-    // Parse trigger definition to extract timing, event, and function
-    // Example: CREATE TRIGGER name BEFORE INSERT ON table EXECUTE FUNCTION func()
-    val timing =
-        when {
-            def.contains(" BEFORE ", ignoreCase = true) -> "BEFORE"
-            def.contains(" AFTER ", ignoreCase = true) -> "AFTER"
-            def.contains(" INSTEAD OF ", ignoreCase = true) -> "INSTEAD OF"
-            else -> ""
-        }
-    val event =
-        when {
-            def.contains(" INSERT ", ignoreCase = true) -> "INSERT"
-            def.contains(" UPDATE ", ignoreCase = true) -> "UPDATE"
-            def.contains(" DELETE ", ignoreCase = true) -> "DELETE"
-            def.contains(" TRUNCATE ", ignoreCase = true) -> "TRUNCATE"
-            else -> ""
-        }
-    val functionRegex = "EXECUTE\\s+(?:FUNCTION|PROCEDURE)\\s+(\\w+)".toRegex(RegexOption.IGNORE_CASE)
-    val function = functionRegex.find(def)?.groupValues?.get(1) ?: ""
-    return PostgresTrigger(
+fun Row.toPostgresTrigger(): PostgresTrigger =
+    PostgresTrigger(
         schema = string("schema"),
         pgObjectName = string("trigger_name"),
         tableName = string("table_name"),
-        event = event,
-        timing = timing,
-        function = function,
-        definition = def,
+        events = splitCsv(stringOrNull("events")).toSet(),
+        timing = string("timing"),
+        function = string("function_name"),
+        definition = string("definition"),
     )
-}
 
 fun Row.toPostgresEnumType(): PostgresEnumType {
     val values = array<String>("enum_values").toList()
@@ -185,7 +164,7 @@ fun Row.toPostgresSchemaObject(): PostgresSchemaObject =
 
 fun Row.toPostgresPublication(): PostgresPublication {
     val tablesArray = array<String>("tables").toList()
-    val publishOps = array<String>("publish_ops").toList().toSet()
+    val publishOps = array<String>("publish_ops").toList().filter { it.isNotBlank() }.toSet()
     return PostgresPublication(
         pgObjectName = string("publication_name"),
         tables = tablesArray,
@@ -198,7 +177,7 @@ fun Row.toPostgresSubscription(): PostgresSubscription {
     val pubNames = array<String>("publication_names").toList()
     return PostgresSubscription(
         pgObjectName = string("subscription_name"),
-        connection = string("connection_info"),
+        connection = string("connection_info_masked"),
         publicationNames = pubNames,
         enabled = boolean("enabled"),
     )
@@ -217,6 +196,7 @@ fun Row.toPostgresAggregate(): PostgresAggregate =
     PostgresAggregate(
         schema = string("schema"),
         pgObjectName = string("aggregate_name"),
+        identityArguments = string("identity_arguments"),
         argumentTypes = stringOrNull("argument_types") ?: "",
         stateType = string("state_type"),
         sfunc = string("sfunc"),
@@ -248,5 +228,26 @@ fun Row.toPostgresFTSConfiguration(): PostgresFTSConfiguration =
         schema = string("schema"),
         pgObjectName = string("config_name"),
         parser = string("parser"),
-        dictionaries = emptyMap(),
+        dictionaries =
+            splitTokenMappings(stringOrNull("dictionary_mappings"))
+                .mapValues { (_, dictionaries) -> dictionaries.filter { it.isNotBlank() } },
     )
+
+private fun splitCsv(value: String?): List<String> =
+    value?.split(",")
+        ?.map { it.trim() }
+        ?.filter { it.isNotBlank() }
+        ?: emptyList()
+
+private fun splitTokenMappings(value: String?): Map<String, List<String>> =
+    value?.split(";")
+        ?.mapNotNull { tokenEntry ->
+            val parts = tokenEntry.split("=", limit = 2)
+            val token = parts.firstOrNull()?.trim().orEmpty()
+            if (token.isBlank()) {
+                null
+            } else {
+                token to splitCsv(parts.getOrNull(1))
+            }
+        }?.toMap()
+        ?: emptyMap()

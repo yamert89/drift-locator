@@ -4,22 +4,20 @@
 [![Downloads](https://img.shields.io/jetbrains/plugin/d/31138-drift-locator.svg)](https://plugins.jetbrains.com/plugin/31138-drift-locator)
 [![Platform](https://img.shields.io/badge/platform-IntelliJ%20IDEA-purple.svg)](https://www.jetbrains.com/idea/)
 [![PostgreSQL](https://img.shields.io/badge/postgresql-12+-green.svg)](https://www.postgresql.org/)
+[![MySQL](https://img.shields.io/badge/mysql-8.0+-blue.svg)](https://www.mysql.com/)
 
 **Drift Locator** is an IntelliJ IDEA plugin.
 <!-- Plugin description -->
 Provides database schema comparison across different instances. It helps developers identify differences between diferent environments, ensuring smooth deployments and early detection of schema drift.
 
-> **Note:** Currently only PostgreSQL is supported. Other database systems are planned for future releases.
+> **Note:** Drift Locator currently supports PostgreSQL 12+ and MySQL 8.0+. Metadata coverage is database-specific and may differ by object type.
 
 ## Features
 
 - **Schema Comparison** — Compare database schemas between two instances
 - **Comprehensive Object Support**:
-  - Tables (columns, indexes, constraints)
-  - Views
-  - Functions
-  - Procedures
-  - Sequences
+  - PostgreSQL: tables, views, materialized views, functions, procedures, sequences, triggers, domains, enums, policies, comments, grants, and more
+  - MySQL: tables, views, routines, triggers, events, partitions, grants, users, and more
 - **Visual Diff Viewer** — Built-in IntelliJ IDEA diff viewer for side-by-side schema comparison
 - **Export Reports** — Automatic export of schema snapshots to text files in your project
 - **Multiple Connections** — Manage and compare multiple database connections within your project
@@ -28,6 +26,7 @@ Provides database schema comparison across different instances. It helps develop
 
 - **IntelliJ IDEA**: 2024.1 or later (build 241+)
 - **PostgreSQL**: 12 or later
+- **MySQL**: 8.0 or later
 
 ## Getting Started
 

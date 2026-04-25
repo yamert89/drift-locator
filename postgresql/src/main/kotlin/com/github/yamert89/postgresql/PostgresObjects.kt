@@ -45,6 +45,9 @@ data class PostgresIndex(
     val indexName: String,
     val indexDefinition: String,
     val isUnique: Boolean,
+    val accessMethod: String?,
+    val predicate: String?,
+    val isExpressionBased: Boolean,
 ) : DatabaseObject {
     override val name: String = indexName
     override val type: String = "INDEX"
@@ -57,6 +60,10 @@ data class PostgresIndex(
 data class PostgresConstraint(
     val constraintName: String,
     val constraintType: String,
+    val columns: List<String>,
+    val referencedTable: String?,
+    val referencedColumns: List<String>,
+    val checkClause: String?,
     val definition: String,
 ) : DatabaseObject {
     override val name: String = constraintName
@@ -71,6 +78,7 @@ data class PostgresView(
     override val schema: String,
     override val pgObjectName: String,
     val columns: List<PostgresColumn>,
+    val definition: String?,
 ) : PostgresObject() {
     override val type: String = "VIEW"
     override val children: List<DatabaseObject> = columns
@@ -82,10 +90,14 @@ data class PostgresView(
 data class PostgresFunction(
     override val schema: String,
     override val pgObjectName: String,
+    val identityArguments: String,
     val returnType: String,
     val arguments: String,
     val language: String,
+    val definition: String,
 ) : PostgresObject() {
+    override val name: String get() = "$schema.${objectName}"
+    override val objectName: String get() = buildSignature(pgObjectName, identityArguments)
     override val type: String = "FUNCTION"
     override val children: List<DatabaseObject> = emptyList()
 }
@@ -96,9 +108,13 @@ data class PostgresFunction(
 data class PostgresProcedure(
     override val schema: String,
     override val pgObjectName: String,
+    val identityArguments: String,
     val arguments: String,
     val language: String,
+    val definition: String,
 ) : PostgresObject() {
+    override val name: String get() = "$schema.${objectName}"
+    override val objectName: String get() = buildSignature(pgObjectName, identityArguments)
     override val type: String = "PROCEDURE"
     override val children: List<DatabaseObject> = emptyList()
 }
@@ -127,7 +143,7 @@ data class PostgresTrigger(
     override val schema: String,
     override val pgObjectName: String,
     val tableName: String,
-    val event: String,
+    val events: Set<String>,
     val timing: String,
     val function: String,
     val definition: String,
@@ -366,12 +382,15 @@ data class PostgresPartition(
 data class PostgresAggregate(
     override val schema: String,
     override val pgObjectName: String,
+    val identityArguments: String,
     val argumentTypes: String,
     val stateType: String,
     val sfunc: String,
     val finalfunc: String?,
     val initcond: String?,
 ) : PostgresObject() {
+    override val name: String get() = "$schema.${objectName}"
+    override val objectName: String get() = buildSignature(pgObjectName, identityArguments)
     override val type: String = "AGGREGATE"
     override val children: List<DatabaseObject> = emptyList()
 }
@@ -388,6 +407,9 @@ data class PostgresOperator(
     val commutator: String?,
     val negator: String?,
 ) : PostgresObject() {
+    override val name: String get() = "$schema.${objectName}"
+    override val objectName: String
+        get() = "$pgObjectName(${leftType ?: "NONE"},${rightType ?: "NONE"})"
     override val type: String = "OPERATOR"
     override val children: List<DatabaseObject> = emptyList()
 }
@@ -414,8 +436,15 @@ data class PostgresFTSConfiguration(
     override val schema: String,
     override val pgObjectName: String,
     val parser: String,
-    val dictionaries: Map<String, String>,
+    val dictionaries: Map<String, List<String>>,
 ) : PostgresObject() {
     override val type: String = "FTS_CONFIGURATION"
     override val children: List<DatabaseObject> = emptyList()
 }
+
+private fun buildSignature(name: String, identityArguments: String): String =
+    if (identityArguments.isBlank()) {
+        "$name()"
+    } else {
+        "$name($identityArguments)"
+    }
