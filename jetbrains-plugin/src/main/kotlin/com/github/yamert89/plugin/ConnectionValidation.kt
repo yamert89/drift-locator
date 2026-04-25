@@ -2,12 +2,9 @@ package com.github.yamert89.plugin
 
 import com.github.yamert89.plugin.ui.notifyError
 import com.github.yamert89.plugin.ui.notifyInfo
-import com.github.yamert89.postgresql.PostgresConnectionTester
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
-
-import java.sql.SQLException
 
 private val LOG = Logger.getInstance("DriftLocator.ConnectionValidation")
 
@@ -36,16 +33,18 @@ fun validateConnectionInBackground(
 
     ApplicationManager.getApplication().executeOnPooledThread {
         val isConnected =
-            PostgresConnectionTester.testConnection(
-                host = connection.host,
-                port = connection.port,
-                database = connection.database,
-                username = connection.username,
-                password = connection.password,
-            ).onFailure { e ->
-                LOG.warn("Connection validation threw exception for '${connection.name}'", e)
-                project.notifyError(e.localizedMessage)
-            }.getOrDefault(false)
+            DatabaseAdapters
+                .forType(connection.databaseType)
+                .testConnection(
+                    host = connection.host,
+                    port = connection.port,
+                    database = connection.database,
+                    username = connection.username,
+                    password = connection.password,
+                ).onFailure { e ->
+                    LOG.warn("Connection validation threw exception for '${connection.name}'", e)
+                    project.notifyError(e.localizedMessage)
+                }.getOrDefault(false)
         ApplicationManager.getApplication().invokeLater {
             if (isConnected) {
                 val msg = "Connection '${connection.name}' validated successfully"
@@ -62,8 +61,9 @@ fun validateConnectionInBackground(
                 ApplicationManager.getApplication().executeOnPooledThread {
                     service.updateConnectionValidationStatus(connection.id, false)
                 }
-                val errorMsg = "Connection '${connection.name}' failed to connect. " +
-                    "Please check the connection details."
+                val errorMsg =
+                    "${connection.databaseType.displayName} connection '${connection.name}' failed to connect. " +
+                        "Please check the connection details."
                 project.notifyError(errorMsg)
                 onFailure?.invoke()
             }

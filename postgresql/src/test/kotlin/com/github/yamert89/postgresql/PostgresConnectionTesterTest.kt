@@ -1,93 +1,89 @@
 package com.github.yamert89.postgresql
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import java.sql.SQLException
 
 /**
  * Unit tests for PostgresConnectionTester.
  * Note: Full connection tests with actual PostgreSQL are in PostgresSchemaComparatorTest with Testcontainers.
  */
 class PostgresConnectionTesterTest {
-
     @Test
-    fun `testConnection should throw SQLException for invalid host`() {
-        val exception = assertThrows(SQLException::class.java) {
+    fun `testConnection should return failure for invalid host`() {
+        val result =
             PostgresConnectionTester.testConnection(
                 host = "invalid_host_12345",
                 port = 5432,
                 database = "test",
                 username = "test",
-                password = "test"
+                password = "test",
             )
-        }
 
-        assertNotNull(exception.message)
+        assertTrue(result.isFailure)
+        assertNotNull(result.exceptionOrNull()?.message)
     }
 
     @Test
-    fun `testConnection should throw SQLException for unreachable port`() {
-        val exception = assertThrows(SQLException::class.java) {
+    fun `testConnection should return failure for unreachable port`() {
+        val result =
             PostgresConnectionTester.testConnection(
                 host = "localhost",
-                port = 1, // Invalid port
+                // Invalid port
+                port = 1,
                 database = "test",
                 username = "test",
-                password = "test"
+                password = "test",
             )
-        }
 
-        assertNotNull(exception.message)
+        assertTrue(result.isFailure)
+        assertNotNull(result.exceptionOrNull()?.message)
     }
 
     @Test
     fun `testConnection should handle null password`() {
         // This will fail to connect but should not throw NullPointerException
-        val exception = assertThrows(SQLException::class.java) {
+        val result =
             PostgresConnectionTester.testConnection(
                 host = "localhost",
                 port = 1,
                 database = "test",
                 username = "test",
-                password = null
+                password = null,
             )
-        }
 
-        assertNotNull(exception)
+        assertTrue(result.isFailure)
+        assertNotNull(result.exceptionOrNull())
     }
 
     @Test
     fun `testConnection should handle empty password`() {
         // This will fail to connect but should not throw NullPointerException
-        val exception = assertThrows(SQLException::class.java) {
+        val result =
             PostgresConnectionTester.testConnection(
                 host = "localhost",
                 port = 1,
                 database = "test",
                 username = "test",
-                password = ""
+                password = "",
             )
-        }
 
-        assertNotNull(exception)
+        assertTrue(result.isFailure)
+        assertNotNull(result.exceptionOrNull())
     }
 
     @Test
-    fun `testConnection should throw SQLException for wrong credentials`() {
-        val exception = assertThrows(SQLException::class.java) {
+    fun `testConnection should return failure for wrong credentials`() {
+        val result =
             PostgresConnectionTester.testConnection(
                 host = "localhost",
                 port = 1,
                 database = "test",
                 username = "wrong_user",
-                password = "wrong_password"
+                password = "wrong_password",
             )
-        }
 
-        assertNotNull(exception)
+        assertTrue(result.isFailure)
+        assertNotNull(result.exceptionOrNull())
     }
 }

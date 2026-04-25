@@ -1,4 +1,14 @@
 # Drift Locator Changelog
+## [1.2.0]
+
+### Added
+- MySQL 8.0+ support
+- Database type selector in connection dialogs
+
+### Changed
+- Connection validation, schema fetching, and comparison now use database-type-specific adapters
+- Existing serialized connections without a database type are treated as PostgreSQL
+
 ## [1.1.1]
 
 ### Fixed
@@ -23,4 +33,3 @@
 - Built-in IntelliJ IDEA diff viewer integration
 - Auto-save connections and auto-fill from last used
 - Schema snapshots export to `.driftLocator/YYYY_MM_DD_HH_MM/`
-

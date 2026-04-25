@@ -1,8 +1,6 @@
 package com.github.yamert89.plugin
 
-import com.github.yamert89.core.DatabaseMeta
 import com.github.yamert89.core.Defaults
-import com.github.yamert89.postgresql.PgMeta
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -21,7 +19,6 @@ class DriftLocatorProjectService(private val project: Project) {
     val connections = ConcurrentHashMap<String, DatabaseConnection>()
     private var lastConnection: DatabaseConnection? = null
     private val connectionChangeListeners = mutableListOf<() -> Unit>()
-    private val databaseMeta: DatabaseMeta = PgMeta()
 
     private val json =
         Json {
@@ -154,7 +151,7 @@ class DriftLocatorProjectService(private val project: Project) {
         return systemDir
     }
 
-    fun getDefaults(): Defaults = databaseMeta.getDefaults()
+    fun getDefaults(databaseType: DatabaseType = DatabaseType.POSTGRESQL): Defaults = DatabaseAdapters.defaults(databaseType)
 
     fun getLastConnection(): DatabaseConnection? = lastConnection
 

@@ -14,6 +14,7 @@ data class DatabaseConnection(
     val host: String,
     val port: Int,
     val database: String,
+    val databaseType: DatabaseType = DatabaseType.POSTGRESQL,
     val username: String,
     val schema: String,
     val savePassword: Boolean = true,
@@ -28,7 +29,7 @@ data class DatabaseConnection(
         get() = field ?: PasswordStorage.getPassword(id)
 
     val url: String
-        get() = "jdbc:postgresql://$host:$port/$database"
+        get() = DatabaseAdapters.forType(databaseType).jdbcUrl(host, port, database)
 
     /**
      * Returns a copy of this connection with the password explicitly set.

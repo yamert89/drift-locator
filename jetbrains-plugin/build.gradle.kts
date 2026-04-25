@@ -38,9 +38,12 @@ dependencies {
     }
     implementation(project(":core"))
     implementation(project(":postgresql"))
+    implementation(project(":mysql"))
     implementation(libs.kotlinx.serialization.json)
     // SLF4J binding for kotlin-logging to redirect logs to IntelliJ's console
     implementation(libs.slf4j.simple)
+    testImplementation(libs.bundles.testing)
+    testImplementation(libs.junit4)
 }
 
 // Define plugin description provider once and reuse it

@@ -14,22 +14,13 @@ class AddConnectionAction : AnAction() {
         val service = DriftLocatorProjectService.getInstance(project)
         val dialog = AddConnectionDialog(project, service.getDefaults(), service.getLastConnection())
         if (dialog.showAndGet()) {
-            val connection =
-                DatabaseConnection(
-                    id = dialog.getConnectionName(),
-                    name = dialog.getConnectionName(),
-                    host = dialog.getHost(),
-                    port = dialog.getPort(),
-                    database = dialog.getDatabase(),
-                    username = dialog.getUsername(),
-                    schema = dialog.getSchema(),
-                    savePassword = dialog.getSavePassword(),
-                ).withPassword(dialog.getPassword())
+            val connection = dialog.getConnectionData().toDatabaseConnection()
             val passwordStatus = if (connection.password.isNullOrEmpty()) "not set" else "set"
             log.info(
                 "Adding connection '${connection.name}' " +
                     "(${connection.host}:${connection.port}/${connection.database}, " +
-                    "schema=${connection.schema}, username=${connection.username}, password=$passwordStatus)",
+                    "type=${connection.databaseType.displayName}, schema=${connection.schema}, " +
+                    "username=${connection.username}, password=$passwordStatus)",
             )
             service.addConnection(connection)
             validateConnectionInBackground(project, connection, service)

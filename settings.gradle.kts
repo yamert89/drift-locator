@@ -15,4 +15,5 @@ dependencyResolutionManagement {
 
 include("core")
 include("postgresql")
+include("mysql")
 include("jetbrains-plugin")

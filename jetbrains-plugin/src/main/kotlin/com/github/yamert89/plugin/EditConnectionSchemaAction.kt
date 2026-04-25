@@ -39,17 +39,7 @@ class EditConnectionSchemaAction : AnAction() {
 
         val dialog = EditConnectionDialog(project, connection)
         if (dialog.showAndGet()) {
-            val newConnection =
-                DatabaseConnection(
-                    id = dialog.getConnectionName(),
-                    name = dialog.getConnectionName(),
-                    host = dialog.getHost(),
-                    port = dialog.getPort(),
-                    database = dialog.getDatabase(),
-                    username = dialog.getUsername(),
-                    schema = dialog.getSchema(),
-                    savePassword = dialog.getSavePassword(),
-                ).withPassword(dialog.getPassword())
+            val newConnection = dialog.getConnectionData().toDatabaseConnection()
             try {
                 service.updateConnection(connectionId, newConnection)
                 log.info("Connection '$connectionId' updated to: ${newConnection.name} (${newConnection.host}:${newConnection.port})")

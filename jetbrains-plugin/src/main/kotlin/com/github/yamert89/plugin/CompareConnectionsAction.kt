@@ -3,10 +3,8 @@ package com.github.yamert89.plugin
 import com.github.yamert89.core.DatabaseSchema
 import com.github.yamert89.core.DiffExporter
 import com.github.yamert89.plugin.ui.DriftLocatorToolWindowPanel
-import com.github.yamert89.plugin.ui.notifyError
 import com.github.yamert89.plugin.ui.PasswordPromptDialog
-import com.github.yamert89.postgresql.PostgresConnectionManager
-import com.github.yamert89.postgresql.PostgresSchemaComparator
+import com.github.yamert89.plugin.ui.notifyError
 import com.intellij.diff.DiffContentFactory
 import com.intellij.diff.DiffManager
 import com.intellij.diff.requests.SimpleDiffRequest
@@ -74,6 +72,12 @@ class CompareConnectionsAction : AnAction() {
             Messages.showErrorDialog(project, "Target connection not found: $targetConnectionId", "Error")
             return
         }
+        val comparisonError = crossDatabaseComparisonError(sourceConnection, targetConnection)
+        if (comparisonError != null) {
+            log.warn(comparisonError)
+            Messages.showErrorDialog(project, comparisonError, "Database Type Mismatch")
+            return
+        }
 
         val sourceNeedsPassword = sourceConnection.password.isNullOrBlank()
         val targetNeedsPassword = targetConnection.password.isNullOrBlank()
@@ -94,7 +98,7 @@ class CompareConnectionsAction : AnAction() {
 
         log.info(
             "Starting schema comparison between connections: '$sourceConnectionId' " +
-                "(schema: '${sourceConnection.schema}') and '$targetConnectionId' " +
+                "(type: ${sourceConnection.databaseType.displayName}, schema: '${sourceConnection.schema}') and '$targetConnectionId' " +
                 "(schema: '${targetConnection.schema}')",
         )
         ApplicationManager.getApplication().executeOnPooledThread {
@@ -114,7 +118,11 @@ class CompareConnectionsAction : AnAction() {
             val targetSchema = fetchSchemaFromConnection(targetConnection)
             log.debug("Target schema fetched, objects count: ${targetSchema.objects.size}")
 
-            val diff = PostgresSchemaComparator().compare(sourceSchema, targetSchema)
+            val diff =
+                DatabaseAdapters
+                    .forType(sourceConnection.databaseType)
+                    .comparator
+                    .compare(sourceSchema, targetSchema)
             log.info(
                 "Comparison complete - added: ${diff.added.size}, " +
                     "removed: ${diff.removed.size}, modified: ${diff.modified.size}",
@@ -130,7 +138,8 @@ class CompareConnectionsAction : AnAction() {
     }
 
     private fun fetchSchemaFromConnection(connection: DatabaseConnection) =
-        PostgresConnectionManager
+        DatabaseAdapters
+            .forType(connection.databaseType)
             .getConnection(
                 host = connection.host,
                 port = connection.port,
@@ -138,8 +147,10 @@ class CompareConnectionsAction : AnAction() {
                 username = connection.username,
                 password = connection.password,
             ).use { conn ->
-                log.debug("Fetching schema: ${connection.schema} from ${connection.name}")
-                PostgresSchemaComparator.fetchSchema(conn, connection.schema)
+                log.debug(
+                    "Fetching ${connection.databaseType.displayName} schema: ${connection.schema} from ${connection.name}",
+                )
+                DatabaseAdapters.forType(connection.databaseType).fetchSchema(conn, connection.schema)
             }
 
     private fun showComparisonResultOnUiThread(
