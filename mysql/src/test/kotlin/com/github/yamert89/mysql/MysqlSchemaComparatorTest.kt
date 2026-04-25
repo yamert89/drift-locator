@@ -198,11 +198,15 @@ class MysqlSchemaComparatorTest {
     fun `fetch schema should include schema grants users and tablespaces when fetching all schemas`() {
         DriverManager.getConnection(mysql.jdbcUrl, mysql.username, mysql.password).use { connection ->
             connection.createStatement().execute("CREATE TABLE metadata_probe (id INT)")
+        }
 
+        DriverManager.getConnection(mysql.jdbcUrl, "root", mysql.password).use { connection ->
             val schema = MysqlSchemaComparator.fetchSchema(connection)
 
             assertTrue(schema.objects.filterIsInstance<MysqlSchemaObject>().any { it.schemaName == "testdb" })
             assertTrue(schema.objects.filterIsInstance<MysqlGrant>().isNotEmpty())
+            assertTrue(schema.objects.filterIsInstance<MysqlUser>().isNotEmpty())
+            assertTrue(schema.objects.filterIsInstance<MysqlTablespace>().isNotEmpty())
         }
     }
 

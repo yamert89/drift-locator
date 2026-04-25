@@ -45,9 +45,13 @@ class PostgresSchemaComparatorTest {
                 $$;
                 """.trimIndent(),
             )
+            statement.execute("DROP SERVER IF EXISTS loopback_server CASCADE")
+            statement.execute("DROP EXTENSION IF EXISTS postgres_fdw CASCADE")
             statement.execute("DROP PUBLICATION IF EXISTS pub_all")
             statement.execute("DROP EXTENSION IF EXISTS hstore CASCADE")
             statement.execute("DROP SCHEMA IF EXISTS ext_schema CASCADE")
+            statement.execute("DROP ROLE IF EXISTS app_reader")
+            statement.execute("DROP TABLESPACE IF EXISTS driftlocator_ts")
             // Drop and recreate public schema to clean all objects
             statement.execute("DROP SCHEMA IF EXISTS public CASCADE")
             statement.execute("CREATE SCHEMA public")
@@ -769,6 +773,146 @@ class PostgresSchemaComparatorTest {
         val fts = schema.objects.filterIsInstance<PostgresFTSConfiguration>().single { it.pgObjectName == "test_config" }
         assertTrue(fts.dictionaries.isNotEmpty())
         assertTrue(fts.dictionaries.values.flatten().isNotEmpty())
+
+        connection.close()
+    }
+
+    @Test
+    fun `fetch schema should include rules foreign tables partitions schemas roles tablespaces aggregates operators and casts`() {
+        postgres.execInContainer(
+            "bash",
+            "-lc",
+            "rm -rf /tmp/driftlocator_ts && install -d -o postgres -g postgres -m 700 /tmp/driftlocator_ts",
+        )
+
+        val connection =
+            DriverManager.getConnection(
+                postgres.jdbcUrl,
+                postgres.username,
+                postgres.password,
+            )
+        connection.createStatement().execute("CREATE ROLE app_reader LOGIN")
+        connection.createStatement().execute("CREATE TABLESPACE driftlocator_ts LOCATION '/tmp/driftlocator_ts'")
+        connection.createStatement().execute(
+            """
+            CREATE TABLE rule_target (id INT PRIMARY KEY);
+            CREATE TABLE rule_audit (id INT PRIMARY KEY);
+            CREATE RULE log_insert AS
+                ON INSERT TO rule_target
+                DO ALSO INSERT INTO rule_audit(id) VALUES (NEW.id);
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE TABLE sales (
+                id INT NOT NULL,
+                sale_date DATE NOT NULL
+            ) PARTITION BY RANGE (sale_date)
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE TABLE sales_2024 PARTITION OF sales
+            FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')
+            """.trimIndent(),
+        )
+        connection.createStatement().execute("CREATE EXTENSION postgres_fdw")
+        connection.createStatement().execute(
+            """
+            CREATE SERVER loopback_server
+            FOREIGN DATA WRAPPER postgres_fdw
+            OPTIONS (host '127.0.0.1', dbname 'testdb', port '5432')
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE FOREIGN TABLE remote_customers (
+                id INTEGER,
+                email TEXT
+            )
+            SERVER loopback_server
+            OPTIONS (table_name 'customers')
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE AGGREGATE public.sum_plus_one(INTEGER) (
+                SFUNC = int4pl,
+                STYPE = INTEGER,
+                INITCOND = '1'
+            )
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE FUNCTION public.concat_bang(TEXT, TEXT)
+            RETURNS TEXT AS $$
+            BEGIN
+                RETURN $1 || '!' || $2;
+            END;
+            $$ LANGUAGE plpgsql IMMUTABLE
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE OPERATOR public.!! (
+                LEFTARG = TEXT,
+                RIGHTARG = TEXT,
+                PROCEDURE = public.concat_bang
+            )
+            """.trimIndent(),
+        )
+        connection.createStatement().execute(
+            """
+            CREATE DOMAIN source_text AS TEXT;
+            CREATE DOMAIN target_text AS TEXT;
+            CREATE FUNCTION public.source_to_target(source_text)
+            RETURNS target_text AS $$
+            BEGIN
+                RETURN $1::text::target_text;
+            END;
+            $$ LANGUAGE plpgsql IMMUTABLE;
+            CREATE CAST (source_text AS target_text)
+                WITH FUNCTION public.source_to_target(source_text)
+                AS ASSIGNMENT;
+            """.trimIndent(),
+        )
+
+        val schema = PostgresSchemaComparator.fetchSchema(connection)
+
+        val rule = schema.objects.filterIsInstance<PostgresRule>().single { it.pgObjectName == "log_insert" }
+        assertEquals("rule_target", rule.tableName)
+        assertEquals("INSERT", rule.event)
+
+        val foreignTable = schema.objects.filterIsInstance<PostgresForeignTable>().single { it.pgObjectName == "remote_customers" }
+        assertEquals("loopback_server", foreignTable.serverName)
+        assertEquals(listOf("id", "email"), foreignTable.columns.map { it.columnName })
+
+        val partition = schema.objects.filterIsInstance<PostgresPartition>().single { it.pgObjectName == "sales_2024" }
+        assertEquals("public.sales", partition.parentTable)
+        assertTrue(partition.partitionKey.contains("RANGE"))
+        assertTrue(partition.partitionBound.contains("2025-01-01"))
+
+        assertTrue(schema.objects.filterIsInstance<PostgresSchemaObject>().any { it.schemaName == "public" })
+
+        val role = schema.objects.filterIsInstance<PostgresRole>().single { it.pgObjectName == "app_reader" }
+        assertTrue(role.canLogin)
+
+        val tablespace = schema.objects.filterIsInstance<PostgresTablespace>().single { it.pgObjectName == "driftlocator_ts" }
+        assertTrue(tablespace.location.contains("/tmp/driftlocator_ts"))
+
+        val aggregate = schema.objects.filterIsInstance<PostgresAggregate>().single { it.pgObjectName == "sum_plus_one" }
+        assertEquals("int4", aggregate.stateType)
+        assertEquals("int4pl", aggregate.sfunc)
+
+        val operator = schema.objects.filterIsInstance<PostgresOperator>().single { it.pgObjectName == "!!" }
+        assertEquals("concat_bang", operator.function)
+        assertEquals("text", operator.leftType)
+        assertEquals("text", operator.rightType)
+
+        val cast = schema.objects.filterIsInstance<PostgresCast>().single { it.sourceType == "source_text" && it.targetType == "target_text" }
+        assertEquals("source_to_target", cast.function)
+        assertEquals("ASSIGNMENT", cast.context)
 
         connection.close()
     }
