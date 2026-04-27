@@ -5,7 +5,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import javax.swing.JComponent
 
-class EditConnectionDialog(project: Project, private val connection: DatabaseConnection) : DialogWrapper(project) {
+class EditConnectionDialog(project: Project, connection: DatabaseConnection) : DialogWrapper(project) {
     private val originalId = connection.id
     private val form = ConnectionDialogForm(ConnectionFormData.fromConnection(connection))
 
@@ -18,5 +18,4 @@ class EditConnectionDialog(project: Project, private val connection: DatabaseCon
 
     fun getConnectionData(): ConnectionFormData = form.getData()
 
-    fun getOriginalId(): String = originalId
 }

@@ -1,5 +1,6 @@
 package com.github.yamert89.postgresql
 
+import com.github.yamert89.core.DiffExporter
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -9,13 +10,14 @@ import org.junit.jupiter.api.Test
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import java.nio.file.Files
 import java.sql.DriverManager
 
 @Testcontainers
 class PostgresSchemaComparatorTest {
     companion object {
         @Container
-        val postgres =
+        val postgres: PostgreSQLContainer<*> =
             PostgreSQLContainer("postgres:15")
                 .withDatabaseName("testdb")
                 .withUsername("test")
@@ -30,20 +32,20 @@ class PostgresSchemaComparatorTest {
                 postgres.username,
                 postgres.password,
             )
-        try {
+        connection.use { connection ->
             val statement = connection.createStatement()
             statement.execute(
                 """
-                DO $$
-                BEGIN
-                    IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'sub_masked') THEN
-                        ALTER SUBSCRIPTION sub_masked DISABLE;
-                        ALTER SUBSCRIPTION sub_masked SET (slot_name = NONE);
-                        DROP SUBSCRIPTION sub_masked;
-                    END IF;
-                END
-                $$;
-                """.trimIndent(),
+                    DO $$
+                    BEGIN
+                        IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'sub_masked') THEN
+                            ALTER SUBSCRIPTION sub_masked DISABLE;
+                            ALTER SUBSCRIPTION sub_masked SET (slot_name = NONE);
+                            DROP SUBSCRIPTION sub_masked;
+                        END IF;
+                    END
+                    $$;
+                    """.trimIndent(),
             )
             statement.execute("DROP SERVER IF EXISTS loopback_server CASCADE")
             statement.execute("DROP EXTENSION IF EXISTS postgres_fdw CASCADE")
@@ -56,8 +58,6 @@ class PostgresSchemaComparatorTest {
             statement.execute("DROP SCHEMA IF EXISTS public CASCADE")
             statement.execute("CREATE SCHEMA public")
             statement.execute("GRANT ALL ON SCHEMA public TO ${postgres.username}")
-        } finally {
-            connection.close()
         }
     }
 
@@ -1054,8 +1054,8 @@ class PostgresSchemaComparatorTest {
         val diff = comparator.compare(source, target)
 
         // Export to temporary file
-        val tempFile = java.nio.file.Files.createTempFile("diff", ".txt")
-        com.github.yamert89.core.DiffExporter.exportToFile(diff, tempFile)
+        val tempFile = Files.createTempFile("diff", ".txt")
+        DiffExporter.exportToFile(diff, tempFile)
 
         assertTrue(tempFile.toFile().exists())
         val content = tempFile.toFile().readText()

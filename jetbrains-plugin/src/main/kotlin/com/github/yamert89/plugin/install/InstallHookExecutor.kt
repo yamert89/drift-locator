@@ -42,16 +42,11 @@ class InstallHookExecutor : ProjectActivity {
         var executedCount = 0
         hooks.forEach { hook ->
             if (!installService.isHookExecuted(hook.id)) {
-                try {
-                    LOG.info("Executing install hook: ${hook.id} - ${hook.description}")
-                    hook.execute()
-                    installService.markHookExecuted(hook.id)
-                    executedCount++
-                    LOG.info("Successfully executed hook: ${hook.id}")
-                } catch (e: Exception) {
-                    LOG.error("Failed to execute hook ${hook.id}: ${e.message}", e)
-                    // Continue with other hooks even if one fails
-                }
+                LOG.info("Executing install hook: ${hook.id} - ${hook.description}")
+                hook.execute()
+                installService.markHookExecuted(hook.id)
+                executedCount++
+                LOG.info("Successfully executed hook: ${hook.id}")
             } else {
                 LOG.debug("Hook already executed: ${hook.id}")
             }
@@ -98,7 +93,7 @@ class InstallHookExecutor : ProjectActivity {
             val getIdMethod = pluginIdClass.getMethod("getId", String::class.java)
             val pluginId = getIdMethod.invoke(null, PLUGIN_ID)
             PluginManagerCore.getPlugin(pluginId as PluginId)?.version
-        } catch (e: Exception) {
+        } catch (e: NoSuchMethodException) {
             LOG.warn("Failed to get plugin version: ${e.message}")
             null
         }

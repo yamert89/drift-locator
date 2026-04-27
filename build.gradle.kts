@@ -1,5 +1,4 @@
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
-import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     alias(libs.plugins.kotlin) apply false

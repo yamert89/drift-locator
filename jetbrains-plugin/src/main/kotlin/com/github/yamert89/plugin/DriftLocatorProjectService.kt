@@ -90,10 +90,10 @@ class DriftLocatorProjectService(private val project: Project) {
      * @throws IllegalArgumentException if the new connection ID already exists (different from oldId)
      */
     fun updateConnection(oldId: String, newConnection: DatabaseConnection): DatabaseConnection? {
-        val existing = connections[oldId] ?: return null
+        if (connections[oldId] == null) return null
         // Check if new ID conflicts with another connection
-        if (oldId != newConnection.id && connections.containsKey(newConnection.id)) {
-            throw IllegalArgumentException("Connection with name '${newConnection.name}' already exists")
+        require(!(oldId != newConnection.id && connections.containsKey(newConnection.id))) {
+            "Connection with name '${newConnection.name}' already exists"
         }
         // Remove old entry and its password if ID changed (in background thread)
         if (oldId != newConnection.id) {
@@ -240,8 +240,6 @@ class DriftLocatorProjectService(private val project: Project) {
             }
         } catch (e: IOException) {
             LOG.warn("Failed to load connections: ${e.message}")
-        } catch (e: Exception) {
-            LOG.warn("Failed to parse connections: ${e.message}")
         }
     }
 

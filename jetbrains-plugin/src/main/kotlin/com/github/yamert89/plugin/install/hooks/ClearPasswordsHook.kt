@@ -5,7 +5,11 @@ import com.github.yamert89.plugin.install.ProjectInstallHook
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.io.IOException
 
@@ -42,7 +46,7 @@ class ClearPasswordsHook(override val project: Project) : ProjectInstallHook {
 
         try {
             processConnectionsFile(connectionsFile)
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             LOG.warn("Failed to process connections file: ${e.message}", e)
         }
     }
@@ -102,14 +106,10 @@ class ClearPasswordsHook(override val project: Project) : ProjectInstallHook {
         if (passwordsToMigrate.isNotEmpty()) {
             ApplicationManager.getApplication().executeOnPooledThread {
                 passwordsToMigrate.forEach { (id, password) ->
-                    try {
-                        // Only save if not already present
-                        if (!PasswordStorage.hasPassword(id)) {
-                            PasswordStorage.savePassword(id, password)
-                            LOG.info("Migrated password for connection: $id")
-                        }
-                    } catch (e: Exception) {
-                        LOG.warn("Failed to migrate password for connection $id: ${e.message}")
+                    // Only save if not already present
+                    if (!PasswordStorage.hasPassword(id)) {
+                        PasswordStorage.savePassword(id, password)
+                        LOG.info("Migrated password for connection: $id")
                     }
                 }
             }

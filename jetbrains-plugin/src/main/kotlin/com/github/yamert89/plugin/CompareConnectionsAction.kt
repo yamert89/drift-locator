@@ -63,12 +63,12 @@ class CompareConnectionsAction : AnAction() {
         val sourceConnection = service.connections[sourceConnectionId]
         val targetConnection = service.connections[targetConnectionId]
         if (sourceConnection == null) {
-            log.error("Source connection not found: $sourceConnectionId")
+            log.warn("Source connection not found: $sourceConnectionId")
             Messages.showErrorDialog(project, "Source connection not found: $sourceConnectionId", "Error")
             return
         }
         if (targetConnection == null) {
-            log.error("Target connection not found: $targetConnectionId")
+            log.warn("Target connection not found: $targetConnectionId")
             Messages.showErrorDialog(project, "Target connection not found: $targetConnectionId", "Error")
             return
         }

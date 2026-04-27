@@ -10,12 +10,13 @@ import org.testcontainers.containers.MySQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.sql.DriverManager
+import java.sql.Statement
 
 @Testcontainers
 class MysqlSchemaComparatorTest {
     companion object {
         @Container
-        val mysql =
+        val mysql: MySQLContainer<*> =
             MySQLContainer("mysql:8.0")
                 .withDatabaseName("testdb")
                 .withUsername("test")
@@ -225,7 +226,7 @@ class MysqlSchemaComparatorTest {
     }
 
     private fun dropObjects(
-        statement: java.sql.Statement,
+        statement: Statement,
         objectType: String,
         table: String,
         schemaColumn: String,
@@ -248,7 +249,7 @@ class MysqlSchemaComparatorTest {
         names.forEach { name -> statement.execute("DROP $objectType IF EXISTS `testdb`.`$name`") }
     }
 
-    private fun dropRoutines(statement: java.sql.Statement, routineType: String) {
+    private fun dropRoutines(statement: Statement, routineType: String) {
         val resultSet =
             statement.executeQuery(
                 """
