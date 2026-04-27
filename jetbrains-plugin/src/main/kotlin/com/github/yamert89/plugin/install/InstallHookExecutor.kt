@@ -86,8 +86,8 @@ class InstallHookExecutor : ProjectActivity {
      * Uses reflection for compatibility with older IDE versions (241-251)
      * where PluginId.Companion may not be resolved correctly.
      */
-    private fun getCurrentPluginVersion(): String? {
-        return try {
+    private fun getCurrentPluginVersion(): String? =
+        try {
             // Use reflection to avoid NoSuchFieldError for PluginId.Companion in older IDE versions
             val pluginIdClass = Class.forName("com.intellij.openapi.extensions.PluginId")
             val getIdMethod = pluginIdClass.getMethod("getId", String::class.java)
@@ -97,5 +97,4 @@ class InstallHookExecutor : ProjectActivity {
             LOG.warn("Failed to get plugin version: ${e.message}")
             null
         }
-    }
 }

@@ -6,7 +6,6 @@ import com.intellij.openapi.ui.DialogWrapper
 import javax.swing.JComponent
 
 class EditConnectionDialog(project: Project, connection: DatabaseConnection) : DialogWrapper(project) {
-    private val originalId = connection.id
     private val form = ConnectionDialogForm(ConnectionFormData.fromConnection(connection))
 
     init {
@@ -17,5 +16,4 @@ class EditConnectionDialog(project: Project, connection: DatabaseConnection) : D
     override fun createCenterPanel(): JComponent = form.createPanel()
 
     fun getConnectionData(): ConnectionFormData = form.getData()
-
 }

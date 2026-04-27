@@ -64,6 +64,7 @@ complexity:
   LargeClass:
     active: true
     threshold: 600
+    excludes: ['**/test/**']
   NestedBlockDepth:
     active: true
     threshold: 6

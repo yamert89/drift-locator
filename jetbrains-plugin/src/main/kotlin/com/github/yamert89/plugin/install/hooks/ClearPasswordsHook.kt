@@ -57,11 +57,12 @@ class ClearPasswordsHook(override val project: Project) : ProjectInstallHook {
             return
         }
 
-        val json = Json {
-            prettyPrint = true
-            ignoreUnknownKeys = true
-            isLenient = true
-        }
+        val json =
+            Json {
+                prettyPrint = true
+                ignoreUnknownKeys = true
+                isLenient = true
+            }
 
         val jsonElement = json.parseToJsonElement(jsonString)
         if (jsonElement !is JsonArray) {
@@ -73,29 +74,30 @@ class ClearPasswordsHook(override val project: Project) : ProjectInstallHook {
         val passwordsToMigrate = mutableListOf<Pair<String, String>>()
 
         // Check for passwords in the JSON
-        val cleanedArray = JsonArray(
-            jsonElement.map { element ->
-                if (element is JsonObject) {
-                    val passwordPrimitive = element[PASSWORD_FIELD]
-                    if (passwordPrimitive != null && passwordPrimitive is JsonPrimitive) {
-                        val password = passwordPrimitive.content
-                        if (password.isNotBlank()) {
-                            hasPasswords = true
-                            val id = element["id"]?.jsonPrimitive?.content
-                            if (id != null) {
-                                passwordsToMigrate.add(id to password)
+        val cleanedArray =
+            JsonArray(
+                jsonElement.map { element ->
+                    if (element is JsonObject) {
+                        val passwordPrimitive = element[PASSWORD_FIELD]
+                        if (passwordPrimitive != null && passwordPrimitive is JsonPrimitive) {
+                            val password = passwordPrimitive.content
+                            if (password.isNotBlank()) {
+                                hasPasswords = true
+                                val id = element["id"]?.jsonPrimitive?.content
+                                if (id != null) {
+                                    passwordsToMigrate.add(id to password)
+                                }
                             }
+                            // Remove password field from the object
+                            JsonObject(element.filterKeys { it != PASSWORD_FIELD })
+                        } else {
+                            element
                         }
-                        // Remove password field from the object
-                        JsonObject(element.filterKeys { it != PASSWORD_FIELD })
                     } else {
                         element
                     }
-                } else {
-                    element
-                }
-            }
-        )
+                },
+            )
 
         if (!hasPasswords) {
             LOG.debug("No plaintext passwords found in ${file.absolutePath}")

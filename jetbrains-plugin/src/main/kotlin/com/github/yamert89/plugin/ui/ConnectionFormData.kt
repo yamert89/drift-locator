@@ -29,10 +29,7 @@ data class ConnectionFormData(
         ).withPassword(password)
 
     companion object {
-        fun forNewConnection(
-            defaults: Defaults,
-            lastConnection: DatabaseConnection? = null,
-        ): ConnectionFormData =
+        fun forNewConnection(defaults: Defaults, lastConnection: DatabaseConnection? = null): ConnectionFormData =
             ConnectionFormData(
                 name = "",
                 host = lastConnection?.host ?: defaults.host,

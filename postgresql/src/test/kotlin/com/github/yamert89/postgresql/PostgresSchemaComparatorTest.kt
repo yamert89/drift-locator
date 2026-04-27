@@ -36,16 +36,16 @@ class PostgresSchemaComparatorTest {
             val statement = connection.createStatement()
             statement.execute(
                 """
-                    DO $$
-                    BEGIN
-                        IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'sub_masked') THEN
-                            ALTER SUBSCRIPTION sub_masked DISABLE;
-                            ALTER SUBSCRIPTION sub_masked SET (slot_name = NONE);
-                            DROP SUBSCRIPTION sub_masked;
-                        END IF;
-                    END
-                    $$;
-                    """.trimIndent(),
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'sub_masked') THEN
+                        ALTER SUBSCRIPTION sub_masked DISABLE;
+                        ALTER SUBSCRIPTION sub_masked SET (slot_name = NONE);
+                        DROP SUBSCRIPTION sub_masked;
+                    END IF;
+                END
+                $$;
+                """.trimIndent(),
             )
             statement.execute("DROP SERVER IF EXISTS loopback_server CASCADE")
             statement.execute("DROP EXTENSION IF EXISTS postgres_fdw CASCADE")
@@ -910,7 +910,10 @@ class PostgresSchemaComparatorTest {
         assertEquals("text", operator.leftType)
         assertEquals("text", operator.rightType)
 
-        val cast = schema.objects.filterIsInstance<PostgresCast>().single { it.sourceType == "source_text" && it.targetType == "target_text" }
+        val cast =
+            schema.objects.filterIsInstance<PostgresCast>().single {
+                it.sourceType == "source_text" && it.targetType == "target_text"
+            }
         assertEquals("source_to_target", cast.function)
         assertEquals("ASSIGNMENT", cast.context)
 

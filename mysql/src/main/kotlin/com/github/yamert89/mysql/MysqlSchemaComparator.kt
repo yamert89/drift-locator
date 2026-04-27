@@ -1,6 +1,5 @@
 package com.github.yamert89.mysql
 
-import com.github.yamert89.core.DatabaseObject
 import com.github.yamert89.core.DatabaseSchema
 import com.github.yamert89.core.SchemaComparator
 import com.github.yamert89.core.SchemaDiff

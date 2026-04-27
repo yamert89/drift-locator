@@ -19,45 +19,45 @@ object MysqlSchemaFetcher {
     fun fetchSchema(connection: Connection): DatabaseSchema = fetchSchema(connection, null)
 
     fun fetchSchema(connection: Connection, schemaName: String?): DatabaseSchema {
-    logger.info { "Fetching MySQL schema ${schemaName ?: "(all non-system)"}" }
-    val session = Session(KConnection(connection))
-    val objects = mutableListOf<DatabaseObject>()
-    fetchSafely("tables") { fetchTables(session, objects, schemaName) }
-    fetchSafely("views") { fetchViews(session, objects, schemaName) }
-    fetchSafely("routines") { fetchRoutines(session, objects, schemaName) }
-    fetchSafely("triggers") { fetchTriggers(session, objects, schemaName) }
-    fetchSafely("events") { fetchEvents(session, objects, schemaName) }
-    fetchSafely("partitions") { fetchPartitions(session, objects, schemaName) }
-    if (schemaName == null) {
-        fetchSafely("schemas") { fetchSchemas(session, objects) }
-        fetchSafely("grants") { fetchGrants(session, objects) }
-        fetchSafely("users") { fetchUsers(session, objects) }
-        fetchSafely("tablespaces") { fetchTablespaces(session, objects) }
-    }
-    logger.info { "MySQL schema fetch complete: ${objects.size} total objects" }
-    return DatabaseSchema(objects)
+        logger.info { "Fetching MySQL schema ${schemaName ?: "(all non-system)"}" }
+        val session = Session(KConnection(connection))
+        val objects = mutableListOf<DatabaseObject>()
+        fetchSafely("tables") { fetchTables(session, objects, schemaName) }
+        fetchSafely("views") { fetchViews(session, objects, schemaName) }
+        fetchSafely("routines") { fetchRoutines(session, objects, schemaName) }
+        fetchSafely("triggers") { fetchTriggers(session, objects, schemaName) }
+        fetchSafely("events") { fetchEvents(session, objects, schemaName) }
+        fetchSafely("partitions") { fetchPartitions(session, objects, schemaName) }
+        if (schemaName == null) {
+            fetchSafely("schemas") { fetchSchemas(session, objects) }
+            fetchSafely("grants") { fetchGrants(session, objects) }
+            fetchSafely("users") { fetchUsers(session, objects) }
+            fetchSafely("tablespaces") { fetchTablespaces(session, objects) }
+        }
+        logger.info { "MySQL schema fetch complete: ${objects.size} total objects" }
+        return DatabaseSchema(objects)
     }
 
     @Suppress("TooGenericExceptionCaught")
     private inline fun fetchSafely(objectType: String, fetcher: () -> Unit) {
-    try {
-        logger.debug { "Fetching MySQL $objectType..." }
-        fetcher()
-    } catch (e: Throwable) {
-        logger.warn(e) { "Failed to fetch MySQL $objectType, skipping: ${e.message}" }
-    }
+        try {
+            logger.debug { "Fetching MySQL $objectType..." }
+            fetcher()
+        } catch (e: Throwable) {
+            logger.warn(e) { "Failed to fetch MySQL $objectType, skipping: ${e.message}" }
+        }
     }
 
     private fun schemaPredicate(columnName: String, schemaName: String?): String =
-    schemaName?.let { "AND $columnName = ?" }
-        ?: "AND $columnName NOT IN (${systemSchemas.joinToString(",") { "'$it'" }})"
+        schemaName?.let { "AND $columnName = ?" }
+            ?: "AND $columnName NOT IN (${systemSchemas.joinToString(",") { "'$it'" }})"
 
     private fun query(sql: String, schemaName: String?) = schemaName?.let { queryOf(sql, it) } ?: queryOf(sql)
 
     private fun fetchTables(
-    session: Session,
-    objects: MutableList<DatabaseObject>,
-    schemaName: String?,
+        session: Session,
+        objects: MutableList<DatabaseObject>,
+        schemaName: String?,
     ) {
         val columnsByTable = fetchColumns(session, schemaName)
         val indexesByTable = fetchIndexes(session, schemaName)

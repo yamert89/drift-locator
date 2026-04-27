@@ -43,7 +43,6 @@ class PasswordPromptDialog(
                         .columns(20)
                 }
             }
-
         }
 
     fun getSourcePassword(): String? = sourcePasswordField.getPassword(sourceConnection)

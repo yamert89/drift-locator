@@ -22,6 +22,10 @@ subprojects {
     }
 
     tasks.withType<Test> {
+        dependsOn(
+            tasks.named("ktlintCheck"),
+            tasks.named("detekt"),
+        )
         useJUnitPlatform()
         testLogging {
             events("passed", "skipped", "failed")

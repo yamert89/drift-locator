@@ -96,7 +96,7 @@ data class PostgresFunction(
     val language: String,
     val definition: String,
 ) : PostgresObject() {
-    override val name: String get() = "$schema.${objectName}"
+    override val name: String get() = "$schema.$objectName"
     override val objectName: String get() = buildSignature(pgObjectName, identityArguments)
     override val type: String = "FUNCTION"
     override val children: List<DatabaseObject> = emptyList()
@@ -113,7 +113,7 @@ data class PostgresProcedure(
     val language: String,
     val definition: String,
 ) : PostgresObject() {
-    override val name: String get() = "$schema.${objectName}"
+    override val name: String get() = "$schema.$objectName"
     override val objectName: String get() = buildSignature(pgObjectName, identityArguments)
     override val type: String = "PROCEDURE"
     override val children: List<DatabaseObject> = emptyList()
@@ -389,7 +389,7 @@ data class PostgresAggregate(
     val finalfunc: String?,
     val initcond: String?,
 ) : PostgresObject() {
-    override val name: String get() = "$schema.${objectName}"
+    override val name: String get() = "$schema.$objectName"
     override val objectName: String get() = buildSignature(pgObjectName, identityArguments)
     override val type: String = "AGGREGATE"
     override val children: List<DatabaseObject> = emptyList()
@@ -407,7 +407,7 @@ data class PostgresOperator(
     val commutator: String?,
     val negator: String?,
 ) : PostgresObject() {
-    override val name: String get() = "$schema.${objectName}"
+    override val name: String get() = "$schema.$objectName"
     override val objectName: String
         get() = "$pgObjectName(${leftType ?: "NONE"},${rightType ?: "NONE"})"
     override val type: String = "OPERATOR"
