@@ -8,11 +8,13 @@ import com.github.yamert89.mysql.MysqlConnectionManager
 import com.github.yamert89.mysql.MysqlConnectionTester
 import com.github.yamert89.mysql.MysqlMeta
 import com.github.yamert89.mysql.MysqlSchemaComparator
+import com.github.yamert89.mysql.MysqlSchemaFetcher
 import com.github.yamert89.mysql.mysqlJdbcUrl
 import com.github.yamert89.postgresql.PgMeta
 import com.github.yamert89.postgresql.PostgresConnectionManager
 import com.github.yamert89.postgresql.PostgresConnectionTester
 import com.github.yamert89.postgresql.PostgresSchemaComparator
+import com.github.yamert89.postgresql.PostgresSchemaFetcher
 import java.sql.Connection
 
 interface DatabaseAdapter {
@@ -75,7 +77,7 @@ object DatabaseAdapters {
             ): Connection = PostgresConnectionManager.getConnection(host, port, database, username, password)
 
             override fun fetchSchema(connection: Connection, schemaName: String?): DatabaseSchema =
-                PostgresSchemaComparator.fetchSchema(connection, schemaName)
+                PostgresSchemaFetcher.fetchSchema(connection, schemaName)
         }
 
     private val mysql =
@@ -107,7 +109,7 @@ object DatabaseAdapters {
             ): Connection = MysqlConnectionManager.getConnection(host, port, database, username, password)
 
             override fun fetchSchema(connection: Connection, schemaName: String?): DatabaseSchema =
-                MysqlSchemaComparator.fetchSchema(connection, schemaName)
+                MysqlSchemaFetcher.fetchSchema(connection, schemaName)
         }
 
     private val adapters = listOf(postgres, mysql).associateBy { it.type }

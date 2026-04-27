@@ -69,7 +69,7 @@ class PostgresSchemaComparatorTest {
                 postgres.username,
                 postgres.password,
             )
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         // Filter out global objects (roles, tablespaces, etc.) to check schema-specific objects
         val excludedTypes =
             listOf(
@@ -101,7 +101,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val tables = schema.objects.filter { it.type == "TABLE" }
         assertEquals(1, tables.size)
         val table = tables.first() as PostgresTable
@@ -146,7 +146,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val views = schema.objects.filter { it.type == "VIEW" }
         assertEquals(1, views.size)
         val view = views.first() as PostgresView
@@ -179,7 +179,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val functions = schema.objects.filter { it.type == "FUNCTION" }
         assertEquals(1, functions.size)
         val function = functions.first() as PostgresFunction
@@ -219,7 +219,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val procedures = schema.objects.filter { it.type == "PROCEDURE" }
         assertEquals(1, procedures.size)
         val procedure = procedures.first() as PostgresProcedure
@@ -247,7 +247,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val sequences = schema.objects.filter { it.type == "SEQUENCE" }
         assertEquals(1, sequences.size)
         val sequence = sequences.first() as PostgresSequence
@@ -273,7 +273,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val domains = schema.objects.filter { it.type == "DOMAIN" }
         assertEquals(1, domains.size)
         val domain = domains.first() as PostgresDomain
@@ -298,7 +298,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val extensions = schema.objects.filter { it.type == "EXTENSION" }
         assertTrue(extensions.isNotEmpty())
         val uuidExtension = extensions.find { it.name.contains("uuid-ossp") }
@@ -344,7 +344,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val triggers = schema.objects.filter { it.type == "TRIGGER" }
         assertEquals(1, triggers.size)
         val trigger = triggers.first() as PostgresTrigger
@@ -379,7 +379,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val matViews = schema.objects.filter { it.type == "MATERIALIZED_VIEW" }
         assertEquals(1, matViews.size, "Expected 1 materialized view, found: ${matViews.map { it.name }}")
         val matView = matViews.first() as PostgresMaterializedView
@@ -420,7 +420,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val policies = schema.objects.filter { it.type == "POLICY" }
         assertEquals(1, policies.size)
         val policy = policies.first() as PostgresPolicy
@@ -451,7 +451,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val comments = schema.objects.filter { it.type == "COMMENT" }
         assertEquals(1, comments.size)
         val comment = comments.first() as PostgresComment
@@ -476,7 +476,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val enums = schema.objects.filter { it.type == "ENUM" }
         assertEquals(1, enums.size)
         val enumType = enums.first() as PostgresEnumType
@@ -508,7 +508,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val tables = schema.objects.filter { it.type == "TABLE" }
         assertEquals(1, tables.size)
         val table = tables.first() as PostgresTable
@@ -539,7 +539,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val tables = schema.objects.filter { it.type == "TABLE" }
         assertEquals(1, tables.size)
         val table = tables.first() as PostgresTable
@@ -582,7 +582,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val source = PostgresSchemaComparator.fetchSchema(connection)
+        val source = PostgresSchemaFetcher.fetchSchema(connection)
         val functionNames = source.objects.filterIsInstance<PostgresFunction>().map { it.name }.sorted()
         assertEquals(
             listOf(
@@ -602,7 +602,7 @@ class PostgresSchemaComparatorTest {
             $$ LANGUAGE plpgsql
             """.trimIndent(),
         )
-        val target = PostgresSchemaComparator.fetchSchema(connection)
+        val target = PostgresSchemaFetcher.fetchSchema(connection)
 
         val diff = PostgresSchemaComparator().compare(source, target)
         assertEquals(1, diff.modified.size)
@@ -635,7 +635,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val procedures = schema.objects.filterIsInstance<PostgresProcedure>().map { it.name }.sorted()
         assertEquals(
             listOf(
@@ -688,7 +688,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val table = schema.objects.filterIsInstance<PostgresTable>().single { it.pgObjectName == "rich_table" }
 
         val foreignKey = table.constraints.single { it.constraintType == "FOREIGN KEY" }
@@ -725,10 +725,10 @@ class PostgresSchemaComparatorTest {
         connection.createStatement().execute("CREATE TABLE granted_table (id INT)")
         connection.createStatement().execute("GRANT SELECT ON granted_table TO PUBLIC")
 
-        val scopedSchema = PostgresSchemaComparator.fetchSchema(connection, "public")
+        val scopedSchema = PostgresSchemaFetcher.fetchSchema(connection, "public")
         assertTrue(scopedSchema.objects.filterIsInstance<PostgresExtension>().none { it.schema != "public" })
 
-        val fullSchema = PostgresSchemaComparator.fetchSchema(connection)
+        val fullSchema = PostgresSchemaFetcher.fetchSchema(connection)
         val grants = fullSchema.objects.filterIsInstance<PostgresGrant>()
         assertTrue(grants.any { it.targetObjectName == "granted_table" && it.privilege == "SELECT" })
 
@@ -759,7 +759,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
 
         val publication = schema.objects.filterIsInstance<PostgresPublication>().single { it.pgObjectName == "pub_all" }
         assertEquals(setOf("insert", "update", "delete", "truncate"), publication.publish)
@@ -878,7 +878,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
 
         val rule = schema.objects.filterIsInstance<PostgresRule>().single { it.pgObjectName == "log_insert" }
         assertEquals("rule_target", rule.tableName)
@@ -933,7 +933,7 @@ class PostgresSchemaComparatorTest {
             """.trimIndent(),
         )
 
-        val schema = PostgresSchemaComparator.fetchSchema(connection)
+        val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(schema, schema)
         assertTrue(diff.added.isEmpty())
@@ -951,7 +951,7 @@ class PostgresSchemaComparatorTest {
                 postgres.password,
             )
         // Source schema empty
-        val source = PostgresSchemaComparator.fetchSchema(connection)
+        val source = PostgresSchemaFetcher.fetchSchema(connection)
 
         // Create a table
         connection.createStatement().execute(
@@ -959,7 +959,7 @@ class PostgresSchemaComparatorTest {
             CREATE TABLE added_table (id INT)
             """.trimIndent(),
         )
-        val target = PostgresSchemaComparator.fetchSchema(connection)
+        val target = PostgresSchemaFetcher.fetchSchema(connection)
 
         val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(source, target)
@@ -982,11 +982,11 @@ class PostgresSchemaComparatorTest {
             CREATE TABLE removed_table (id INT)
             """.trimIndent(),
         )
-        val source = PostgresSchemaComparator.fetchSchema(connection)
+        val source = PostgresSchemaFetcher.fetchSchema(connection)
 
         // Drop table
         connection.createStatement().execute("DROP TABLE removed_table")
-        val target = PostgresSchemaComparator.fetchSchema(connection)
+        val target = PostgresSchemaFetcher.fetchSchema(connection)
 
         val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(source, target)
@@ -1009,7 +1009,7 @@ class PostgresSchemaComparatorTest {
             CREATE TABLE modified_table (id INT)
             """.trimIndent(),
         )
-        val source = PostgresSchemaComparator.fetchSchema(connection)
+        val source = PostgresSchemaFetcher.fetchSchema(connection)
 
         // Add a column
         connection.createStatement().execute(
@@ -1017,7 +1017,7 @@ class PostgresSchemaComparatorTest {
             ALTER TABLE modified_table ADD COLUMN name VARCHAR(100)
             """.trimIndent(),
         )
-        val target = PostgresSchemaComparator.fetchSchema(connection)
+        val target = PostgresSchemaFetcher.fetchSchema(connection)
 
         val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(source, target)
@@ -1044,11 +1044,11 @@ class PostgresSchemaComparatorTest {
             )
         // Create two different schemas
         connection.createStatement().execute("CREATE TABLE table1 (id INT)")
-        val source = PostgresSchemaComparator.fetchSchema(connection)
+        val source = PostgresSchemaFetcher.fetchSchema(connection)
         // Drop table1 to make it removed in target
         connection.createStatement().execute("DROP TABLE table1")
         connection.createStatement().execute("CREATE TABLE table2 (name VARCHAR(100))")
-        val target = PostgresSchemaComparator.fetchSchema(connection)
+        val target = PostgresSchemaFetcher.fetchSchema(connection)
 
         val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(source, target)

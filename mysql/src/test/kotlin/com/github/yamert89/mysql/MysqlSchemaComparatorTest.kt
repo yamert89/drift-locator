@@ -64,7 +64,7 @@ class MysqlSchemaComparatorTest {
     @Test
     fun `fetch schema should return empty when no schema objects`() {
         DriverManager.getConnection(mysql.jdbcUrl, mysql.username, mysql.password).use { connection ->
-            val schema = MysqlSchemaComparator.fetchSchema(connection, "testdb")
+            val schema = MysqlSchemaFetcher.fetchSchema(connection, "testdb")
 
             assertTrue(schema.objects.isEmpty(), "Expected no objects, found: ${schema.objects.map { it.type to it.name }}")
         }
@@ -95,7 +95,7 @@ class MysqlSchemaComparatorTest {
             )
             connection.createStatement().execute("CREATE UNIQUE INDEX idx_employees_email ON employees(email)")
 
-            val schema = MysqlSchemaComparator.fetchSchema(connection, "testdb")
+            val schema = MysqlSchemaFetcher.fetchSchema(connection, "testdb")
             val employees = schema.objects.filterIsInstance<MysqlTable>().first { it.mysqlObjectName == "employees" }
 
             assertEquals("testdb.employees", employees.name)
@@ -166,7 +166,7 @@ class MysqlSchemaComparatorTest {
                 """.trimIndent(),
             )
 
-            val schema = MysqlSchemaComparator.fetchSchema(connection, "testdb")
+            val schema = MysqlSchemaFetcher.fetchSchema(connection, "testdb")
 
             val view = schema.objects.filterIsInstance<MysqlView>().single()
             assertEquals("testdb.audit_view", view.name)
@@ -202,7 +202,7 @@ class MysqlSchemaComparatorTest {
         }
 
         DriverManager.getConnection(mysql.jdbcUrl, "root", mysql.password).use { connection ->
-            val schema = MysqlSchemaComparator.fetchSchema(connection)
+            val schema = MysqlSchemaFetcher.fetchSchema(connection)
 
             assertTrue(schema.objects.filterIsInstance<MysqlSchemaObject>().any { it.schemaName == "testdb" })
             assertTrue(schema.objects.filterIsInstance<MysqlGrant>().isNotEmpty())
@@ -214,9 +214,9 @@ class MysqlSchemaComparatorTest {
     @Test
     fun `compare different schemas should detect added table`() {
         DriverManager.getConnection(mysql.jdbcUrl, mysql.username, mysql.password).use { connection ->
-            val source = MysqlSchemaComparator.fetchSchema(connection, "testdb")
+            val source = MysqlSchemaFetcher.fetchSchema(connection, "testdb")
             connection.createStatement().execute("CREATE TABLE added_table (id INT)")
-            val target = MysqlSchemaComparator.fetchSchema(connection, "testdb")
+            val target = MysqlSchemaFetcher.fetchSchema(connection, "testdb")
 
             val diff = MysqlSchemaComparator().compare(source, target)
 
