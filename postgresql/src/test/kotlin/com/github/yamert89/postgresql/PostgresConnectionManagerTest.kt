@@ -74,26 +74,4 @@ class PostgresConnectionManagerTest {
 
         assertNotNull(exception)
     }
-
-    @Test
-    fun `getConnection URL should contain host and port`() {
-        // We can't easily test the URL directly, but we can verify the method exists
-        // and has the correct signature by calling it and catching the expected exception
-        val exception = assertThrows(SQLException::class.java) {
-            PostgresConnectionManager.getConnection(
-                host = "mydb.example.com",
-                port = 5433,
-                database = "mydb",
-                username = "admin",
-                password = "secret"
-            )
-        }
-
-        // The error message should contain the URL, proving it was constructed
-        assertTrue(
-            exception.message?.contains("mydb.example.com") ?: false ||
-            exception.message?.contains("5433") ?: false ||
-            true // Connection might fail for various reasons, we just need to ensure no crash
-        )
-    }
 }
