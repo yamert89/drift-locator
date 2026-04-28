@@ -5,6 +5,7 @@ import com.github.yamert89.plugin.DatabaseType
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.dsl.builder.Cell
+import com.intellij.ui.dsl.builder.Row
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
 import javax.swing.JCheckBox
@@ -26,12 +27,14 @@ class ConnectionDialogForm(initialData: ConnectionFormData) {
     private val passwordField = JPasswordField(initialData.password ?: "")
     private val savePasswordCheckbox = JCheckBox("Save password", initialData.savePassword)
     private val schemaField = JTextField(initialData.schema)
+    private var schemaRow: Row? = null
 
     init {
         databaseTypeComboBox.addActionListener {
             val newType = databaseTypeComboBox.selectedItem as DatabaseType
             applyDefaultsForTypeChange(selectedDatabaseType, newType)
             selectedDatabaseType = newType
+            syncSchemaRowVisibility()
         }
     }
 
@@ -79,11 +82,12 @@ class ConnectionDialogForm(initialData: ConnectionFormData) {
                     .columns(COLUMN_SIZE)
                     .required()
             }
-            row("Schema:") {
-                cell(schemaField)
-                    .columns(COLUMN_SIZE)
-                    .required()
-            }
+            schemaRow =
+                row("Schema:") {
+                    cell(schemaField)
+                        .columns(COLUMN_SIZE)
+                        .required()
+                }
             row("Username:") {
                 cell(usernameField)
                     .columns(COLUMN_SIZE)
@@ -96,6 +100,8 @@ class ConnectionDialogForm(initialData: ConnectionFormData) {
             row {
                 cell(savePasswordCheckbox)
             }
+        }.apply {
+            syncSchemaRowVisibility()
         }
 
     fun getData(): ConnectionFormData =
@@ -106,7 +112,11 @@ class ConnectionDialogForm(initialData: ConnectionFormData) {
             database = databaseField.text.trim(),
             databaseType = selectedDatabaseType,
             username = usernameField.text.trim(),
-            schema = schemaField.text.trim(),
+            schema =
+                when (selectedDatabaseType) {
+                    DatabaseType.MYSQL -> databaseField.text.trim()
+                    DatabaseType.POSTGRESQL -> schemaField.text.trim()
+                },
             password = String(passwordField.password).ifEmpty { null },
             savePassword = savePasswordCheckbox.isSelected,
         )
@@ -130,5 +140,9 @@ class ConnectionDialogForm(initialData: ConnectionFormData) {
         if (field.text.trim().isEmpty() || field.text.trim() == oldValue) {
             field.text = newValue
         }
+    }
+
+    private fun syncSchemaRowVisibility() {
+        schemaRow?.visible(selectedDatabaseType != DatabaseType.MYSQL)
     }
 }

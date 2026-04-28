@@ -6,7 +6,6 @@
 - Database type selector in connection dialogs
 
 ### Changed
-- Connection validation, schema fetching, and comparison now use database-type-specific adapters
 - Existing serialized connections without a database type are treated as PostgreSQL
 - PostgreSQL schema snapshots and diffs now distinguish overloaded routines and operators by signature instead of bare name
 - PostgreSQL metadata export now includes richer details for views, materialized views, triggers, constraints, indexes, grants, and FTS configurations

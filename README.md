@@ -1,6 +1,6 @@
 # Drift Locator
 
-[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](https://github.com/yamert89/drift-locator/releases)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/yamert89/drift-locator/releases)
 [![Downloads](https://img.shields.io/jetbrains/plugin/d/31138-drift-locator.svg)](https://plugins.jetbrains.com/plugin/31138-drift-locator)
 [![Platform](https://img.shields.io/badge/platform-IntelliJ%20IDEA-purple.svg)](https://www.jetbrains.com/idea/)
 [![PostgreSQL](https://img.shields.io/badge/postgresql-12+-green.svg)](https://www.postgresql.org/)
