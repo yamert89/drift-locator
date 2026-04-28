@@ -52,7 +52,7 @@ class ConnectionDialogForm(initialData: ConnectionFormData) {
 
     fun createPanel(): JComponent =
         panel {
-            row("Database Type:") {
+            row("Database Engine:") {
                 cell(databaseTypeComboBox)
                     .columns(COLUMN_SIZE)
             }

@@ -3,10 +3,10 @@
 
 ### Added
 - MySQL 8.0+ support
-- Database type selector in connection dialogs
+- Database engine selector in connection dialogs
 
 ### Changed
-- Existing serialized connections without a database type are treated as PostgreSQL
+- Existing serialized connections without a database engine are treated as PostgreSQL
 - PostgreSQL schema snapshots and diffs now distinguish overloaded routines and operators by signature instead of bare name
 - PostgreSQL metadata export now includes richer details for views, materialized views, triggers, constraints, indexes, grants, and FTS configurations
 - Sensitive subscription connection data is masked before it appears in PostgreSQL schema metadata

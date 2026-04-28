@@ -75,7 +75,7 @@ class CompareConnectionsAction : AnAction() {
         val comparisonError = crossDatabaseComparisonError(sourceConnection, targetConnection)
         if (comparisonError != null) {
             log.warn(comparisonError)
-            Messages.showErrorDialog(project, comparisonError, "Database Type Mismatch")
+            Messages.showErrorDialog(project, comparisonError, "Database Engine Mismatch")
             return
         }
 

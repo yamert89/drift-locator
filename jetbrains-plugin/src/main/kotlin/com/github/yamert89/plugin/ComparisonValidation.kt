@@ -6,5 +6,5 @@ fun crossDatabaseComparisonError(sourceConnection: DatabaseConnection, targetCon
     } else {
         "Cannot compare ${sourceConnection.databaseType.displayName} connection '${sourceConnection.name}' " +
             "with ${targetConnection.databaseType.displayName} connection '${targetConnection.name}'. " +
-            "Please select two connections of the same database type."
+            "Please select two connections of the same database engine."
     }
