@@ -12,6 +12,7 @@ data class ConnectionFormData(
     val databaseType: DatabaseType,
     val username: String,
     val schema: String,
+    val filePath: String = "",
     val password: String? = null,
     val savePassword: Boolean = true,
 ) {
@@ -25,6 +26,7 @@ data class ConnectionFormData(
             databaseType = databaseType,
             username = username,
             schema = schema,
+            filePath = filePath,
             savePassword = savePassword,
         ).withPassword(password)
 
@@ -38,6 +40,7 @@ data class ConnectionFormData(
                 databaseType = lastConnection?.databaseType ?: DatabaseType.POSTGRESQL,
                 username = lastConnection?.username ?: defaults.username,
                 schema = lastConnection?.schema ?: defaults.schema,
+                filePath = lastConnection?.filePath ?: defaults.filePath,
                 savePassword = true,
             )
 
@@ -50,6 +53,7 @@ data class ConnectionFormData(
                 databaseType = connection.databaseType,
                 username = connection.username,
                 schema = connection.schema,
+                filePath = connection.filePath,
                 password = connection.password,
                 savePassword = connection.savePassword,
             )

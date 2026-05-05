@@ -28,20 +28,15 @@ fun validateConnectionInBackground(
 ) {
     LOG.info(
         "Starting connection validation for '${connection.name}' " +
-            "(${connection.host}:${connection.port}/${connection.database})",
+            "(${connection.displayScope() ?: connection.url})",
     )
 
     ApplicationManager.getApplication().executeOnPooledThread {
         val isConnected =
             DatabaseAdapters
                 .forType(connection.databaseType)
-                .testConnection(
-                    host = connection.host,
-                    port = connection.port,
-                    database = connection.database,
-                    username = connection.username,
-                    password = connection.password,
-                ).onFailure { e ->
+                .testConnection(connection)
+                .onFailure { e ->
                     LOG.warn("Connection validation threw exception for '${connection.name}'", e)
                     project.notifyError(e.localizedMessage)
                 }.getOrDefault(false)

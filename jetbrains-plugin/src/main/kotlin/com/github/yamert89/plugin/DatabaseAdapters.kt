@@ -15,6 +15,11 @@ import com.github.yamert89.postgresql.PostgresConnectionManager
 import com.github.yamert89.postgresql.PostgresConnectionTester
 import com.github.yamert89.postgresql.PostgresSchemaComparator
 import com.github.yamert89.postgresql.PostgresSchemaFetcher
+import com.github.yamert89.sqlite.SqliteConnectionManager
+import com.github.yamert89.sqlite.SqliteConnectionTester
+import com.github.yamert89.sqlite.SqliteMeta
+import com.github.yamert89.sqlite.SqliteSchemaComparator
+import com.github.yamert89.sqlite.SqliteSchemaFetcher
 import java.sql.Connection
 
 interface DatabaseAdapter {
@@ -22,27 +27,11 @@ interface DatabaseAdapter {
     val meta: DatabaseMeta
     val comparator: SchemaComparator
 
-    fun jdbcUrl(
-        host: String,
-        port: Int,
-        database: String,
-    ): String
+    fun jdbcUrl(connection: DatabaseConnection): String
 
-    fun testConnection(
-        host: String,
-        port: Int,
-        database: String,
-        username: String,
-        password: String?,
-    ): Result<Boolean>
+    fun testConnection(connection: DatabaseConnection): Result<Boolean>
 
-    fun getConnection(
-        host: String,
-        port: Int,
-        database: String,
-        username: String,
-        password: String?,
-    ): Connection
+    fun getConnection(connection: DatabaseConnection): Connection
 
     fun fetchSchema(connection: Connection, schemaName: String?): DatabaseSchema
 }
@@ -54,27 +43,26 @@ object DatabaseAdapters {
             override val meta = PgMeta()
             override val comparator = PostgresSchemaComparator()
 
-            override fun jdbcUrl(
-                host: String,
-                port: Int,
-                database: String,
-            ): String = "jdbc:postgresql://$host:$port/$database"
+            override fun jdbcUrl(connection: DatabaseConnection): String =
+                "jdbc:postgresql://${connection.host}:${connection.port}/${connection.database}"
 
-            override fun testConnection(
-                host: String,
-                port: Int,
-                database: String,
-                username: String,
-                password: String?,
-            ): Result<Boolean> = PostgresConnectionTester.testConnection(host, port, database, username, password)
+            override fun testConnection(connection: DatabaseConnection): Result<Boolean> =
+                PostgresConnectionTester.testConnection(
+                    connection.host,
+                    connection.port,
+                    connection.database,
+                    connection.username,
+                    connection.password,
+                )
 
-            override fun getConnection(
-                host: String,
-                port: Int,
-                database: String,
-                username: String,
-                password: String?,
-            ): Connection = PostgresConnectionManager.getConnection(host, port, database, username, password)
+            override fun getConnection(connection: DatabaseConnection): Connection =
+                PostgresConnectionManager.getConnection(
+                    connection.host,
+                    connection.port,
+                    connection.database,
+                    connection.username,
+                    connection.password,
+                )
 
             override fun fetchSchema(connection: Connection, schemaName: String?): DatabaseSchema =
                 PostgresSchemaFetcher.fetchSchema(connection, schemaName)
@@ -86,33 +74,50 @@ object DatabaseAdapters {
             override val meta = MysqlMeta()
             override val comparator = MysqlSchemaComparator()
 
-            override fun jdbcUrl(
-                host: String,
-                port: Int,
-                database: String,
-            ): String = mysqlJdbcUrl(host, port, database)
+            override fun jdbcUrl(connection: DatabaseConnection): String =
+                mysqlJdbcUrl(connection.host, connection.port, connection.database)
 
-            override fun testConnection(
-                host: String,
-                port: Int,
-                database: String,
-                username: String,
-                password: String?,
-            ): Result<Boolean> = MysqlConnectionTester.testConnection(host, port, database, username, password)
+            override fun testConnection(connection: DatabaseConnection): Result<Boolean> =
+                MysqlConnectionTester.testConnection(
+                    connection.host,
+                    connection.port,
+                    connection.database,
+                    connection.username,
+                    connection.password,
+                )
 
-            override fun getConnection(
-                host: String,
-                port: Int,
-                database: String,
-                username: String,
-                password: String?,
-            ): Connection = MysqlConnectionManager.getConnection(host, port, database, username, password)
+            override fun getConnection(connection: DatabaseConnection): Connection =
+                MysqlConnectionManager.getConnection(
+                    connection.host,
+                    connection.port,
+                    connection.database,
+                    connection.username,
+                    connection.password,
+                )
 
             override fun fetchSchema(connection: Connection, schemaName: String?): DatabaseSchema =
                 MysqlSchemaFetcher.fetchSchema(connection, schemaName)
         }
 
-    private val adapters = listOf(postgres, mysql).associateBy { it.type }
+    private val sqlite =
+        object : DatabaseAdapter {
+            override val type = DatabaseType.SQLITE
+            override val meta = SqliteMeta()
+            override val comparator = SqliteSchemaComparator()
+
+            override fun jdbcUrl(connection: DatabaseConnection): String = SqliteConnectionManager.jdbcUrl(connection.filePath)
+
+            override fun testConnection(connection: DatabaseConnection): Result<Boolean> =
+                SqliteConnectionTester.testConnection(connection.filePath)
+
+            override fun getConnection(connection: DatabaseConnection): Connection =
+                SqliteConnectionManager.getConnection(connection.filePath)
+
+            override fun fetchSchema(connection: Connection, schemaName: String?): DatabaseSchema =
+                SqliteSchemaFetcher.fetchSchema(connection)
+        }
+
+    private val adapters = listOf(postgres, mysql, sqlite).associateBy { it.type }
 
     fun forType(type: DatabaseType): DatabaseAdapter = adapters.getValue(type)
 

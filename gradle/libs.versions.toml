@@ -5,6 +5,7 @@ kotlin = "2.3.10"
 # Libraries
 postgresql = "42.7.10"
 mysql-connector-j = "9.6.0"
+sqlite-jdbc = "3.50.3.0"
 kotliquery = "1.9.0"
 testcontainers = "1.21.4"
 junit-jupiter = "5.10.0"
@@ -25,6 +26,7 @@ serialization = "2.3.10"
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 postgresql = { group = "org.postgresql", name = "postgresql", version.ref = "postgresql" }
 mysql-connector-j = { group = "com.mysql", name = "mysql-connector-j", version.ref = "mysql-connector-j" }
+sqlite-jdbc = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqlite-jdbc" }
 kotliquery = { group = "com.github.seratch", name = "kotliquery", version.ref = "kotliquery" }
 kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", version.ref = "kotlin-logging" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization-json" }

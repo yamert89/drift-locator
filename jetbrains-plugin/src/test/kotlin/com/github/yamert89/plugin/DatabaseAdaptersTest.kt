@@ -2,6 +2,7 @@ package com.github.yamert89.plugin
 
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
 class DatabaseAdaptersTest {
@@ -23,6 +24,13 @@ class DatabaseAdaptersTest {
         assertNull(crossDatabaseComparisonError(source, target))
     }
 
+    @Test
+    fun `SQLite adapter should be resolved`() {
+        val adapter = DatabaseAdapters.forType(DatabaseType.SQLITE)
+
+        assertSame(DatabaseType.SQLITE, adapter.type)
+    }
+
     private fun connection(name: String, type: DatabaseType): DatabaseConnection =
         DatabaseConnection(
             id = name,
@@ -33,5 +41,7 @@ class DatabaseAdaptersTest {
             databaseType = type,
             username = DatabaseAdapters.defaults(type).username,
             schema = DatabaseAdapters.defaults(type).schema,
+            filePath = if (type == DatabaseType.SQLITE) "/tmp/test.db" else "",
+            savePassword = type != DatabaseType.SQLITE,
         )
 }

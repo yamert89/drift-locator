@@ -18,7 +18,7 @@ class AddConnectionAction : AnAction() {
             val passwordStatus = if (connection.password.isNullOrEmpty()) "not set" else "set"
             log.info(
                 "Adding connection '${connection.name}' " +
-                    "(${connection.host}:${connection.port}/${connection.database}, " +
+                    "(scope=${connection.displayScope()}, " +
                     "type=${connection.databaseType.displayName}, schema=${connection.schema}, " +
                     "username=${connection.username}, password=$passwordStatus)",
             )

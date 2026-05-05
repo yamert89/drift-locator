@@ -56,6 +56,27 @@ class DatabaseConnectionTest {
     }
 
     @Test
+    fun `SQLite databaseType should serialize and restore`() {
+        val connection =
+            DatabaseConnection(
+                id = "local-sqlite",
+                name = "local-sqlite",
+                databaseType = DatabaseType.SQLITE,
+                filePath = "/tmp/app.db",
+                savePassword = false,
+            )
+
+        val encoded = json.encodeToString(serializer<DatabaseConnection>(), connection)
+        val decoded = json.decodeFromString(serializer<DatabaseConnection>(), encoded)
+
+        assertTrue(encoded.contains("\"databaseType\""))
+        assertTrue(encoded.contains("\"filePath\""))
+        assertEquals(DatabaseType.SQLITE, decoded.databaseType)
+        assertTrue(decoded.url.contains("jdbc:sqlite:"))
+        assertEquals("/tmp/app.db", decoded.filePath)
+    }
+
+    @Test
     fun `password should remain transient`() {
         val connection =
             DatabaseConnection(

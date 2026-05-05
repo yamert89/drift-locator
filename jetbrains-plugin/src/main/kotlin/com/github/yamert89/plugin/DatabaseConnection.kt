@@ -11,12 +11,13 @@ import kotlinx.serialization.Transient
 data class DatabaseConnection(
     val id: String,
     val name: String,
-    val host: String,
-    val port: Int,
-    val database: String,
+    val host: String = "",
+    val port: Int = 0,
+    val database: String = "",
     val databaseType: DatabaseType = DatabaseType.POSTGRESQL,
-    val username: String,
-    val schema: String,
+    val username: String = "",
+    val schema: String = "",
+    val filePath: String = "",
     val savePassword: Boolean = true,
     val isValid: Boolean = true,
 ) {
@@ -29,7 +30,20 @@ data class DatabaseConnection(
         get() = field ?: PasswordStorage.getPassword(id)
 
     val url: String
-        get() = DatabaseAdapters.forType(databaseType).jdbcUrl(host, port, database)
+        get() = DatabaseAdapters.forType(databaseType).jdbcUrl(this)
+
+    val usesFilePath: Boolean
+        get() = databaseType == DatabaseType.SQLITE
+
+    val requiresPassword: Boolean
+        get() = !usesFilePath
+
+    fun displayScope(): String? =
+        when (databaseType) {
+            DatabaseType.MYSQL -> database.ifBlank { null }
+            DatabaseType.POSTGRESQL -> schema.ifBlank { null }
+            DatabaseType.SQLITE -> filePath.ifBlank { null }
+        }
 
     /**
      * Returns a copy of this connection with the password explicitly set.

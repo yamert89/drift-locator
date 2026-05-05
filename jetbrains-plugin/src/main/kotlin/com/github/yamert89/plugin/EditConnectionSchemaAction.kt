@@ -42,7 +42,10 @@ class EditConnectionSchemaAction : AnAction() {
             val newConnection = dialog.getConnectionData().toDatabaseConnection()
             try {
                 service.updateConnection(connectionId, newConnection)
-                log.info("Connection '$connectionId' updated to: ${newConnection.name} (${newConnection.host}:${newConnection.port})")
+                log.info(
+                    "Connection '$connectionId' updated to: ${newConnection.name} " +
+                        "(type=${newConnection.databaseType.displayName}, scope=${newConnection.displayScope()})",
+                )
 
                 validateConnectionInBackground(project, newConnection, service)
             } catch (e: IllegalArgumentException) {

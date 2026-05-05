@@ -79,8 +79,12 @@ class CompareConnectionsAction : AnAction() {
             return
         }
 
-        val sourceNeedsPassword = sourceConnection.password.isNullOrBlank()
-        val targetNeedsPassword = targetConnection.password.isNullOrBlank()
+        val sourceNeedsPassword =
+            sourceConnection.password.isNullOrBlank() &&
+                sourceConnection.requiresPassword
+        val targetNeedsPassword =
+            targetConnection.password.isNullOrBlank() &&
+                targetConnection.requiresPassword
 
         var finalSourceConnection = sourceConnection
         var finalTargetConnection = targetConnection
@@ -98,8 +102,9 @@ class CompareConnectionsAction : AnAction() {
 
         log.info(
             "Starting schema comparison between connections: '$sourceConnectionId' " +
-                "(type: ${sourceConnection.databaseType.displayName}, schema: '${sourceConnection.schema}') and '$targetConnectionId' " +
-                "(schema: '${targetConnection.schema}')",
+                "(type: ${sourceConnection.databaseType.displayName}, " +
+                "scope: '${sourceConnection.displayScope()}') and '$targetConnectionId' " +
+                "(scope: '${targetConnection.displayScope()}')",
         )
         ApplicationManager.getApplication().executeOnPooledThread {
             executeComparison(project, finalSourceConnection, finalTargetConnection)
@@ -140,15 +145,10 @@ class CompareConnectionsAction : AnAction() {
     private fun fetchSchemaFromConnection(connection: DatabaseConnection) =
         DatabaseAdapters
             .forType(connection.databaseType)
-            .getConnection(
-                host = connection.host,
-                port = connection.port,
-                database = connection.database,
-                username = connection.username,
-                password = connection.password,
-            ).use { conn ->
+            .getConnection(connection)
+            .use { conn ->
                 log.debug(
-                    "Fetching ${connection.databaseType.displayName} schema: ${connection.schema} from ${connection.name}",
+                    "Fetching ${connection.databaseType.displayName} schema scope '${connection.displayScope()}' from ${connection.name}",
                 )
                 DatabaseAdapters.forType(connection.databaseType).fetchSchema(conn, connection.schema)
             }
@@ -187,8 +187,8 @@ class CompareConnectionsAction : AnAction() {
         val targetFile = File(reportDir, targetFileName)
 
         // Write schema content to files (with schema name in header)
-        sourceFile.writeText(DiffExporter.toText(sourceSchema, sourceConnection.schema))
-        targetFile.writeText(DiffExporter.toText(targetSchema, targetConnection.schema))
+        sourceFile.writeText(DiffExporter.toText(sourceSchema, sourceConnection.displayScope(), connectionScopeLabel(sourceConnection)))
+        targetFile.writeText(DiffExporter.toText(targetSchema, targetConnection.displayScope(), connectionScopeLabel(targetConnection)))
 
         // Refresh virtual files
         val sourceVFile = VfsUtil.findFileByIoFile(sourceFile, true) ?: VfsUtil.findFileByIoFile(sourceFile, false)
@@ -218,8 +218,8 @@ class CompareConnectionsAction : AnAction() {
                 "Schema Comparison: ${sourceConnection.name} vs ${targetConnection.name}",
                 sourceContent,
                 targetContent,
-                "${sourceConnection.name} (${sourceConnection.schema})",
-                "${targetConnection.name} (${targetConnection.schema})",
+                connectionPresentation(sourceConnection),
+                connectionPresentation(targetConnection),
             )
 
         DiffManager.getInstance().showDiff(project, diffRequest)
@@ -235,4 +235,10 @@ class CompareConnectionsAction : AnAction() {
             ?.getContent(0)
             ?.component as? DriftLocatorToolWindowPanel
     }
+
+    private fun connectionScopeLabel(connection: DatabaseConnection): String =
+        if (connection.databaseType == DatabaseType.SQLITE) "File" else "Schema"
+
+    private fun connectionPresentation(connection: DatabaseConnection): String =
+        connection.displayScope()?.let { "${connection.name} ($it)" } ?: connection.name
 }

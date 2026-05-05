@@ -13,11 +13,15 @@ object DiffExporter {
      * @param schema the database schema to export
      * @param schemaName the name of the schema (e.g., "public") to include in header
      */
-    fun toText(schema: DatabaseSchema, schemaName: String? = null): String {
+    fun toText(
+        schema: DatabaseSchema,
+        scopeName: String? = null,
+        scopeLabel: String = "Schema",
+    ): String {
         val sb = StringBuilder()
         sb.appendLine("=== Database Schema ===")
-        if (schemaName != null) {
-            sb.appendLine("Schema: $schemaName")
+        if (scopeName != null) {
+            sb.appendLine("$scopeLabel: $scopeName")
         }
         sb.appendLine("Total objects: ${schema.objects.size}")
         sb.appendLine()

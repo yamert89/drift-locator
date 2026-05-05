@@ -1,4 +1,14 @@
 # Drift Locator Changelog
+## [Unreleased]
+
+### Added
+- SQLite 3.x support for file-based schema comparison
+- Read-only SQLite schema inspection covering tables, columns, indexes, foreign keys, views, and triggers
+
+### Changed
+- Connection configuration is now database-engine aware, with a dedicated SQLite file picker flow
+- Exported schema headers and comparison labels now adapt to file-based SQLite connections
+
 ## [1.2.0]
 
 ### Added

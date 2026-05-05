@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 enum class DatabaseType(val displayName: String) {
     POSTGRESQL("PostgreSQL"),
     MYSQL("MySQL"),
+    SQLITE("SQLite"),
     ;
 
     override fun toString(): String = displayName

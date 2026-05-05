@@ -6,8 +6,9 @@ interface DatabaseMeta {
 
 data class Defaults(
     val host: String = "localhost",
-    val port: Int,
-    val database: String,
-    val schema: String,
-    val username: String,
+    val port: Int = 0,
+    val database: String = "",
+    val schema: String = "",
+    val username: String = "",
+    val filePath: String = "",
 )
