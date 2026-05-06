@@ -3,11 +3,14 @@ package com.github.yamert89.plugin.ui
 import com.github.yamert89.plugin.DatabaseAdapters
 import com.github.yamert89.plugin.DatabaseType
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
+import com.intellij.openapi.observable.properties.PropertyGraph
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.TextBrowseFolderListener
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.ui.ValidationInfo
+import com.intellij.openapi.observable.util.equalsTo
+import com.intellij.openapi.observable.util.notEqualsTo
 import com.intellij.ui.dsl.builder.Cell
-import com.intellij.ui.dsl.builder.Row
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
 import java.nio.file.Files
@@ -18,7 +21,10 @@ import javax.swing.JPasswordField
 import javax.swing.JTextField
 
 class ConnectionDialogForm(initialData: ConnectionFormData) {
-    private var selectedDatabaseType = initialData.databaseType
+    private val propertyGraph = PropertyGraph()
+    private val selectedDatabaseTypeProperty = propertyGraph.property(initialData.databaseType)
+    private val selectedDatabaseType: DatabaseType
+        get() = selectedDatabaseTypeProperty.get()
     private val databaseTypeComboBox =
         ComboBox(DatabaseType.entries.toTypedArray()).apply {
             selectedItem = selectedDatabaseType
@@ -31,31 +37,22 @@ class ConnectionDialogForm(initialData: ConnectionFormData) {
     private val passwordField = JPasswordField(initialData.password ?: "")
     private val savePasswordCheckbox = JCheckBox("Save password", initialData.savePassword)
     private val schemaField = JTextField(initialData.schema)
+    private val sqliteFileChooserDescriptor =
+        FileChooserDescriptorFactory
+            .singleFile()
+            .withTitle("Select SQLite Database")
+            .withDescription("Choose an existing SQLite database file")
     private val filePathField =
         TextFieldWithBrowseButton().apply {
             text = initialData.filePath
-            addBrowseFolderListener(
-                "Select SQLite Database",
-                "Choose an existing SQLite database file",
-                null,
-                FileChooserDescriptorFactory.createSingleFileDescriptor(),
-            )
+            addBrowseFolderListener(TextBrowseFolderListener(sqliteFileChooserDescriptor))
         }
-    private var schemaRow: Row? = null
-    private var hostRow: Row? = null
-    private var portRow: Row? = null
-    private var databaseRow: Row? = null
-    private var usernameRow: Row? = null
-    private var passwordRow: Row? = null
-    private var savePasswordRow: Row? = null
-    private var filePathRow: Row? = null
 
     init {
         databaseTypeComboBox.addActionListener {
             val newType = databaseTypeComboBox.selectedItem as DatabaseType
             applyDefaultsForTypeChange(selectedDatabaseType, newType)
-            selectedDatabaseType = newType
-            syncFieldVisibility()
+            selectedDatabaseTypeProperty.set(newType)
         }
     }
 
@@ -90,70 +87,60 @@ class ConnectionDialogForm(initialData: ConnectionFormData) {
                     .columns(COLUMN_SIZE)
                     .required()
             }
-            hostRow =
-                row("Host:") {
-                    cell(hostField)
-                        .columns(COLUMN_SIZE)
-                        .required { selectedDatabaseType != DatabaseType.SQLITE }
-                }
-            portRow =
-                row("Port:") {
-                    cell(portField)
-                        .columns(COLUMN_SIZE)
-                        .validationOnApply {
-                            if (selectedDatabaseType == DatabaseType.SQLITE) return@validationOnApply null
-                            runCatching { it.text.toInt() }
-                                .fold(
-                                    onSuccess = { null },
-                                    onFailure = { ValidationInfo("Only integers allowed") },
-                                )
+            row("Host:") {
+                cell(hostField)
+                    .columns(COLUMN_SIZE)
+                    .required { selectedDatabaseType != DatabaseType.SQLITE }
+            }.visibleIf(selectedDatabaseTypeProperty.notEqualsTo(DatabaseType.SQLITE))
+            row("Port:") {
+                cell(portField)
+                    .columns(COLUMN_SIZE)
+                    .validationOnApply {
+                        if (selectedDatabaseType == DatabaseType.SQLITE) return@validationOnApply null
+                        runCatching { it.text.toInt() }
+                            .fold(
+                                onSuccess = { null },
+                                onFailure = { ValidationInfo("Only integers allowed") },
+                            )
+                    }
+            }.visibleIf(selectedDatabaseTypeProperty.notEqualsTo(DatabaseType.SQLITE))
+            row("Database:") {
+                cell(databaseField)
+                    .columns(COLUMN_SIZE)
+                    .required { selectedDatabaseType != DatabaseType.SQLITE }
+            }.visibleIf(selectedDatabaseTypeProperty.notEqualsTo(DatabaseType.SQLITE))
+            row("Schema:") {
+                cell(schemaField)
+                    .columns(COLUMN_SIZE)
+                    .validationOnApply {
+                        if (selectedDatabaseType == DatabaseType.SQLITE) {
+                            null
+                        } else if (it.text.isEmpty()) {
+                            ValidationInfo(REQUIRED)
+                        } else {
+                            null
                         }
-                }
-            databaseRow =
-                row("Database:") {
-                    cell(databaseField)
-                        .columns(COLUMN_SIZE)
-                        .required { selectedDatabaseType != DatabaseType.SQLITE }
-                }
-            schemaRow =
-                row("Schema:") {
-                    cell(schemaField)
-                        .columns(COLUMN_SIZE)
-                        .validationOnApply {
-                            if (selectedDatabaseType == DatabaseType.SQLITE) {
-                                null
-                            } else if (it.text.isEmpty()) {
-                                ValidationInfo(REQUIRED)
-                            } else {
-                                null
-                            }
-                        }
-                }
-            usernameRow =
-                row("Username:") {
-                    cell(usernameField)
-                        .columns(COLUMN_SIZE)
-                        .required { selectedDatabaseType != DatabaseType.SQLITE }
-                }
-            passwordRow =
-                row("Password:") {
-                    cell(passwordField)
-                        .columns(COLUMN_SIZE)
-                }
-            savePasswordRow =
-                row {
-                    cell(savePasswordCheckbox)
-                }
-            filePathRow =
-                row("SQLite File:") {
-                    cell(filePathField)
-                        .columns(COLUMN_SIZE)
-                        .validationOnApply {
-                            validateSqliteFilePath(filePathField.text.trim())
-                        }
-                }
-        }.apply {
-            syncFieldVisibility()
+                    }
+            }.visibleIf(selectedDatabaseTypeProperty.equalsTo(DatabaseType.POSTGRESQL))
+            row("Username:") {
+                cell(usernameField)
+                    .columns(COLUMN_SIZE)
+                    .required { selectedDatabaseType != DatabaseType.SQLITE }
+            }.visibleIf(selectedDatabaseTypeProperty.notEqualsTo(DatabaseType.SQLITE))
+            row("Password:") {
+                cell(passwordField)
+                    .columns(COLUMN_SIZE)
+            }.visibleIf(selectedDatabaseTypeProperty.notEqualsTo(DatabaseType.SQLITE))
+            row {
+                cell(savePasswordCheckbox)
+            }.visibleIf(selectedDatabaseTypeProperty.notEqualsTo(DatabaseType.SQLITE))
+            row("SQLite File:") {
+                cell(filePathField)
+                    .columns(COLUMN_SIZE)
+                    .validationOnApply {
+                        validateSqliteFilePath(filePathField.text.trim())
+                    }
+            }.visibleIf(selectedDatabaseTypeProperty.equalsTo(DatabaseType.SQLITE))
         }
 
     fun getData(): ConnectionFormData =
@@ -195,18 +182,6 @@ class ConnectionDialogForm(initialData: ConnectionFormData) {
         if (field.text.trim().isEmpty() || field.text.trim() == oldValue) {
             field.text = newValue
         }
-    }
-
-    private fun syncFieldVisibility() {
-        val isSqlite = selectedDatabaseType == DatabaseType.SQLITE
-        hostRow?.visible(!isSqlite)
-        portRow?.visible(!isSqlite)
-        databaseRow?.visible(!isSqlite)
-        usernameRow?.visible(!isSqlite)
-        passwordRow?.visible(!isSqlite)
-        savePasswordRow?.visible(!isSqlite)
-        filePathRow?.visible(isSqlite)
-        schemaRow?.visible(selectedDatabaseType == DatabaseType.POSTGRESQL)
     }
 
     private fun validateSqliteFilePath(filePath: String): ValidationInfo? {
