@@ -98,3 +98,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 If you encounter any issues or have feature requests, please [create an issue](https://github.com/yamert89/drift-locator/issues) on GitHub.
+
+> Also [available](https://marketplace.visualstudio.com/items?itemName=yamert89.drift-locator) for Visual Studio Code. 

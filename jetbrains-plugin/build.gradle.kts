@@ -103,6 +103,7 @@ intellijPlatform {
     pluginVerification {
         ides {
             recommended()
+            //local(file("../temp/ideaIU-2024.1/idea-IU-241.14494.240"))
         }
     }
 }

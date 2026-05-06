@@ -2,14 +2,14 @@ package com.github.yamert89.plugin.ui
 
 import com.github.yamert89.plugin.DatabaseAdapters
 import com.github.yamert89.plugin.DatabaseType
-import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
+import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.observable.properties.PropertyGraph
+import com.intellij.openapi.observable.util.equalsTo
+import com.intellij.openapi.observable.util.notEqualsTo
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.TextBrowseFolderListener
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.ui.ValidationInfo
-import com.intellij.openapi.observable.util.equalsTo
-import com.intellij.openapi.observable.util.notEqualsTo
 import com.intellij.ui.dsl.builder.Cell
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
@@ -38,10 +38,11 @@ class ConnectionDialogForm(initialData: ConnectionFormData) {
     private val savePasswordCheckbox = JCheckBox("Save password", initialData.savePassword)
     private val schemaField = JTextField(initialData.schema)
     private val sqliteFileChooserDescriptor =
-        FileChooserDescriptorFactory
-            .singleFile()
-            .withTitle("Select SQLite Database")
-            .withDescription("Choose an existing SQLite database file")
+        FileChooserDescriptor(true, false, false, false, false, false).apply {
+            title = "Select SQLite Database"
+            description = "Choose an existing SQLite database file"
+        }
+            //.withExtensionFilter("DB", "db") //todo up minimal version to 2024.3 for this line
     private val filePathField =
         TextFieldWithBrowseButton().apply {
             text = initialData.filePath
