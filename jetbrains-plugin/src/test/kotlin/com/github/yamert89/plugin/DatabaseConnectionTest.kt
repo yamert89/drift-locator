@@ -95,6 +95,72 @@ class DatabaseConnectionTest {
         assertFalseContains(encoded, "secret")
     }
 
+    @Test
+    fun `PostgreSQL report metadata includes connection endpoint and schema`() {
+        val connection =
+            DatabaseConnection(
+                id = "prod",
+                name = "Production",
+                host = "db.example.com",
+                port = 5432,
+                database = "app",
+                databaseType = DatabaseType.POSTGRESQL,
+                schema = "public",
+            )
+
+        assertEquals(
+            listOf(
+                "Connection" to "Production",
+                "Endpoint" to "db.example.com:5432/app",
+            ),
+            connection.reportHeaderDetails(),
+        )
+        assertEquals("Schema", connection.reportScopeLabel())
+    }
+
+    @Test
+    fun `MySQL report metadata uses database scope label`() {
+        val connection =
+            DatabaseConnection(
+                id = "mysql",
+                name = "Analytics",
+                host = "mysql.internal",
+                port = 3306,
+                database = "warehouse",
+                databaseType = DatabaseType.MYSQL,
+            )
+
+        assertEquals("Database", connection.reportScopeLabel())
+        assertEquals("warehouse", connection.displayScope())
+        assertEquals(
+            listOf(
+                "Connection" to "Analytics",
+                "Endpoint" to "mysql.internal:3306/warehouse",
+            ),
+            connection.reportHeaderDetails(),
+        )
+    }
+
+    @Test
+    fun `SQLite report metadata uses file path and no scope label`() {
+        val connection =
+            DatabaseConnection(
+                id = "sqlite",
+                name = "Local cache",
+                databaseType = DatabaseType.SQLITE,
+                filePath = "/tmp/app.db",
+            )
+
+        assertEquals(null, connection.reportScopeLabel())
+        assertEquals(
+            listOf(
+                "Connection" to "Local cache",
+                "Path" to "/tmp/app.db",
+            ),
+            connection.reportHeaderDetails(),
+        )
+    }
+
     private fun assertFalseContains(text: String, fragment: String) {
         assertTrue(!text.contains(fragment), "Did not expect '$fragment' in '$text'")
     }

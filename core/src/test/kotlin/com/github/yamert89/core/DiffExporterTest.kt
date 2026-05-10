@@ -156,4 +156,23 @@ internal class DiffExporterTest {
         assertTrue(content.isNotEmpty())
         assertTrue(content.contains("Database Schema"))
     }
+
+    @Test
+    fun `toText with schema includes report identification details`() {
+        val schema = DatabaseSchema(emptyList())
+        val text =
+            DiffExporter.toText(
+                schema,
+                "public",
+                "Schema",
+                listOf(
+                    "Connection" to "prod-source",
+                    "Endpoint" to "db.example.com:5432/app",
+                ),
+            )
+
+        assertTrue(text.contains("Connection: prod-source"))
+        assertTrue(text.contains("Endpoint: db.example.com:5432/app"))
+        assertTrue(text.contains("Schema: public"))
+    }
 }

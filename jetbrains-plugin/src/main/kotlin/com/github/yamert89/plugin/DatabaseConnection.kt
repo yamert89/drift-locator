@@ -45,6 +45,42 @@ data class DatabaseConnection(
             DatabaseType.SQLITE -> filePath.ifBlank { null }
         }
 
+    fun reportHeaderDetails(): List<Pair<String, String>> =
+        buildList {
+            add("Connection" to name)
+            reportLocationValue()?.let { add(reportLocationLabel() to it) }
+        }
+
+    fun reportScopeLabel(): String? =
+        when (databaseType) {
+            DatabaseType.MYSQL -> "Database"
+            DatabaseType.POSTGRESQL -> "Schema"
+            DatabaseType.SQLITE -> null
+        }
+
+    private fun reportLocationLabel(): String =
+        when (databaseType) {
+            DatabaseType.SQLITE -> "Path"
+            DatabaseType.POSTGRESQL,
+            DatabaseType.MYSQL,
+            -> "Endpoint"
+        }
+
+    private fun reportLocationValue(): String? =
+        when (databaseType) {
+            DatabaseType.SQLITE -> filePath.ifBlank { null }
+            DatabaseType.POSTGRESQL,
+            DatabaseType.MYSQL,
+            -> buildEndpoint()
+        }
+
+    private fun buildEndpoint(): String? {
+        val hostPart = host.ifBlank { return null }
+        val portPart = if (port > 0) ":$port" else ""
+        val databasePart = database.takeIf { it.isNotBlank() }?.let { "/$it" }.orEmpty()
+        return "$hostPart$portPart$databasePart"
+    }
+
     /**
      * Returns a copy of this connection with the password explicitly set.
      * Used when creating/updating connections from UI dialogs.

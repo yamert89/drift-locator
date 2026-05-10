@@ -186,9 +186,23 @@ class CompareConnectionsAction : AnAction() {
         val sourceFile = File(reportDir, sourceFileName)
         val targetFile = File(reportDir, targetFileName)
 
-        // Write schema content to files (with schema name in header)
-        sourceFile.writeText(DiffExporter.toText(sourceSchema, sourceConnection.displayScope(), connectionScopeLabel(sourceConnection)))
-        targetFile.writeText(DiffExporter.toText(targetSchema, targetConnection.displayScope(), connectionScopeLabel(targetConnection)))
+        // Write schema content to files with enough connection context to identify each report on its own.
+        sourceFile.writeText(
+            DiffExporter.toText(
+                sourceSchema,
+                sourceConnection.displayScope(),
+                sourceConnection.reportScopeLabel() ?: "Schema",
+                sourceConnection.reportHeaderDetails(),
+            ),
+        )
+        targetFile.writeText(
+            DiffExporter.toText(
+                targetSchema,
+                targetConnection.displayScope(),
+                targetConnection.reportScopeLabel() ?: "Schema",
+                targetConnection.reportHeaderDetails(),
+            ),
+        )
 
         // Refresh virtual files
         val sourceVFile = VfsUtil.findFileByIoFile(sourceFile, true) ?: VfsUtil.findFileByIoFile(sourceFile, false)
@@ -235,9 +249,6 @@ class CompareConnectionsAction : AnAction() {
             ?.getContent(0)
             ?.component as? DriftLocatorToolWindowPanel
     }
-
-    private fun connectionScopeLabel(connection: DatabaseConnection): String =
-        if (connection.databaseType == DatabaseType.SQLITE) "File" else "Schema"
 
     private fun connectionPresentation(connection: DatabaseConnection): String =
         connection.displayScope()?.let { "${connection.name} ($it)" } ?: connection.name

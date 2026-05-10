@@ -1,4 +1,10 @@
 # Drift Locator Changelog
+
+## [Unreleased]
+
+### Changed
+- Exported schema reports now include connection identification details so source and target snapshots are easier to distinguish
+
 ## [1.3.0]
 
 ### Added
