@@ -9,7 +9,7 @@ import java.nio.file.Files
 import java.sql.Connection
 import java.sql.DriverManager
 
-class SqliteSchemaComparatorTest {
+internal class SqliteSchemaComparatorIntegrationTest {
     @Test
     fun `fetch schema should include tables columns indexes foreign keys views and triggers`() {
         sqliteConnection().use { connection ->
@@ -38,9 +38,7 @@ class SqliteSchemaComparatorTest {
             connection.createStatement().execute(
                 "CREATE INDEX idx_employees_domain_expr ON employees(substr(email, 1, 3)) WHERE email IS NOT NULL",
             )
-            connection.createStatement().execute(
-                "CREATE VIEW employee_view AS SELECT id, email FROM employees",
-            )
+            connection.createStatement().execute("CREATE VIEW employee_view AS SELECT id, email FROM employees")
             connection.createStatement().execute(
                 """
                 CREATE TRIGGER employees_ai
