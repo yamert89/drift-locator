@@ -4,6 +4,7 @@
 
 ### Changed
 - Exported schema reports now include connection identification details so source and target snapshots are easier to distinguish
+- PostgreSQL schema fetching now has version-matrix integration coverage and normalizes procedure signatures consistently across supported server versions
 
 ## [1.3.0]
 

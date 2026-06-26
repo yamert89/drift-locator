@@ -5,72 +5,14 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 import java.nio.file.Files
-import java.sql.DriverManager
 
-@Testcontainers
-class PostgresSchemaComparatorTest {
-    companion object {
-        @Container
-        val postgres: PostgreSQLContainer<*> =
-            PostgreSQLContainer("postgres:15")
-                .withDatabaseName("testdb")
-                .withUsername("test")
-                .withPassword("test")
-    }
-
-    @BeforeEach
-    fun cleanDatabase() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
-        connection.use { connection ->
-            val statement = connection.createStatement()
-            statement.execute(
-                """
-                DO $$
-                BEGIN
-                    IF EXISTS (SELECT 1 FROM pg_subscription WHERE subname = 'sub_masked') THEN
-                        ALTER SUBSCRIPTION sub_masked DISABLE;
-                        ALTER SUBSCRIPTION sub_masked SET (slot_name = NONE);
-                        DROP SUBSCRIPTION sub_masked;
-                    END IF;
-                END
-                $$;
-                """.trimIndent(),
-            )
-            statement.execute("DROP SERVER IF EXISTS loopback_server CASCADE")
-            statement.execute("DROP EXTENSION IF EXISTS postgres_fdw CASCADE")
-            statement.execute("DROP PUBLICATION IF EXISTS pub_all")
-            statement.execute("DROP EXTENSION IF EXISTS hstore CASCADE")
-            statement.execute("DROP SCHEMA IF EXISTS ext_schema CASCADE")
-            statement.execute("DROP ROLE IF EXISTS app_reader")
-            statement.execute("DROP TABLESPACE IF EXISTS driftlocator_ts")
-            // Drop and recreate public schema to clean all objects
-            statement.execute("DROP SCHEMA IF EXISTS public CASCADE")
-            statement.execute("CREATE SCHEMA public")
-            statement.execute("GRANT ALL ON SCHEMA public TO ${postgres.username}")
-        }
-    }
-
+internal class PostgresSchemaComparatorIntegrationTest : PostgresIntegrationTestBase() {
     @Test
     fun `fetch schema should return empty when no objects`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         val schema = PostgresSchemaFetcher.fetchSchema(connection)
-        // Filter out global objects (roles, tablespaces, etc.) to check schema-specific objects
         val excludedTypes =
             listOf(
                 "ROLE", "TABLESPACE", "PUBLICATION", "SUBSCRIPTION",
@@ -79,19 +21,14 @@ class PostgresSchemaComparatorTest {
         val schemaObjects = schema.objects.filter { it.type !in excludedTypes }
         assertTrue(
             schemaObjects.isEmpty(),
-            "Expected no schema objects, but found: ${schema.objects.map { "${it.type}:${it.name}" }}",
+            "Expected no schema objects for postgres:$postgresVersion, but found: ${schema.objects.map { "${it.type}:${it.name}" }}",
         )
         connection.close()
     }
 
     @Test
     fun `fetch schema should include created table`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE TABLE test_table (
@@ -115,22 +52,14 @@ class PostgresSchemaComparatorTest {
         assertNotNull(nameColumn)
         assertEquals("character varying", nameColumn?.dataType)
         assertFalse(nameColumn?.isNullable ?: true)
-
-        // Check primary key constraint
-        val pkConstraint = table.constraints.find { it.constraintType == "PRIMARY KEY" }
-        assertNotNull(pkConstraint)
+        assertNotNull(table.constraints.find { it.constraintType == "PRIMARY KEY" })
 
         connection.close()
     }
 
     @Test
     fun `fetch schema should include view with columns`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE TABLE users (
@@ -153,21 +82,14 @@ class PostgresSchemaComparatorTest {
         assertEquals("public.active_users", view.name)
         assertEquals(2, view.columns.size)
         assertNotNull(view.definition)
-
-        val idColumn = view.columns.find { it.columnName == "id" }
-        assertNotNull(idColumn)
+        assertNotNull(view.columns.find { it.columnName == "id" })
 
         connection.close()
     }
 
     @Test
     fun `fetch schema should include function`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE OR REPLACE FUNCTION get_current_timestamp()
@@ -194,12 +116,7 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include procedure`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE TABLE IF NOT EXISTS audit_log (
@@ -223,9 +140,9 @@ class PostgresSchemaComparatorTest {
         val procedures = schema.objects.filter { it.type == "PROCEDURE" }
         assertEquals(1, procedures.size)
         val procedure = procedures.first() as PostgresProcedure
-        assertEquals("public.log_action(IN action_text character varying)", procedure.name)
+        assertEquals("public.log_action(action_text character varying)", procedure.name)
         assertEquals("sql", procedure.language)
-        assertEquals("IN action_text character varying", procedure.identityArguments)
+        assertEquals("action_text character varying", procedure.identityArguments)
         assertTrue(procedure.definition.contains("CREATE OR REPLACE PROCEDURE"))
 
         connection.close()
@@ -233,12 +150,7 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include sequence`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE SEQUENCE custom_seq
@@ -260,12 +172,7 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include domain`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE DOMAIN positive_integer AS INTEGER
@@ -286,35 +193,20 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include extension`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
-        connection.createStatement().execute(
-            """
-            CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
-            """.trimIndent(),
-        )
+        val connection = newConnection()
+        connection.createStatement().execute("""CREATE EXTENSION IF NOT EXISTS "uuid-ossp" """.trimIndent())
 
         val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val extensions = schema.objects.filter { it.type == "EXTENSION" }
         assertTrue(extensions.isNotEmpty())
-        val uuidExtension = extensions.find { it.name.contains("uuid-ossp") }
-        assertNotNull(uuidExtension)
+        assertNotNull(extensions.find { it.name.contains("uuid-ossp") })
 
         connection.close()
     }
 
     @Test
     fun `fetch schema should include trigger`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE TABLE test_table (
@@ -358,12 +250,7 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include materialized view`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE TABLE orders (
@@ -381,7 +268,7 @@ class PostgresSchemaComparatorTest {
 
         val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val matViews = schema.objects.filter { it.type == "MATERIALIZED_VIEW" }
-        assertEquals(1, matViews.size, "Expected 1 materialized view, found: ${matViews.map { it.name }}")
+        assertEquals(1, matViews.size, "Expected 1 materialized view for postgres:$postgresVersion, found: ${matViews.map { it.name }}")
         val matView = matViews.first() as PostgresMaterializedView
         assertEquals("public.order_summary", matView.name)
         assertEquals(2, matView.columns.size, "Expected 2 columns, found: ${matView.columns.map { it.columnName }}")
@@ -392,12 +279,7 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include policy`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE TABLE sensitive_data (
@@ -406,11 +288,7 @@ class PostgresSchemaComparatorTest {
             )
             """.trimIndent(),
         )
-        connection.createStatement().execute(
-            """
-            ALTER TABLE sensitive_data ENABLE ROW LEVEL SECURITY
-            """.trimIndent(),
-        )
+        connection.createStatement().execute("ALTER TABLE sensitive_data ENABLE ROW LEVEL SECURITY")
         connection.createStatement().execute(
             """
             CREATE POLICY all_access ON sensitive_data
@@ -432,12 +310,7 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include comment`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE TABLE commented_table (
@@ -445,11 +318,7 @@ class PostgresSchemaComparatorTest {
             )
             """.trimIndent(),
         )
-        connection.createStatement().execute(
-            """
-            COMMENT ON TABLE commented_table IS 'This is a test table'
-            """.trimIndent(),
-        )
+        connection.createStatement().execute("COMMENT ON TABLE commented_table IS 'This is a test table'")
 
         val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val comments = schema.objects.filter { it.type == "COMMENT" }
@@ -464,12 +333,7 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include enum type`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE TYPE order_status AS ENUM ('pending', 'processing', 'completed')
@@ -488,12 +352,7 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include index`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE TABLE indexed_table (
@@ -502,11 +361,7 @@ class PostgresSchemaComparatorTest {
             )
             """.trimIndent(),
         )
-        connection.createStatement().execute(
-            """
-            CREATE UNIQUE INDEX idx_email ON indexed_table(email)
-            """.trimIndent(),
-        )
+        connection.createStatement().execute("CREATE UNIQUE INDEX idx_email ON indexed_table(email)")
 
         val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val tables = schema.objects.filter { it.type == "TABLE" }
@@ -523,12 +378,7 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include constraint`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE TABLE constrained_table (
@@ -544,23 +394,15 @@ class PostgresSchemaComparatorTest {
         assertEquals(1, tables.size)
         val table = tables.first() as PostgresTable
 
-        val pkConstraint = table.constraints.find { it.constraintType == "PRIMARY KEY" }
-        assertNotNull(pkConstraint)
-
-        val uniqueConstraint = table.constraints.find { it.constraintType == "UNIQUE" }
-        assertNotNull(uniqueConstraint)
+        assertNotNull(table.constraints.find { it.constraintType == "PRIMARY KEY" })
+        assertNotNull(table.constraints.find { it.constraintType == "UNIQUE" })
 
         connection.close()
     }
 
     @Test
     fun `fetch schema should preserve overloaded function identities and diff`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute(
             """
             CREATE OR REPLACE FUNCTION overloaded_fn(value_text TEXT)
@@ -613,12 +455,7 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should preserve overloaded procedure identities`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute("CREATE TABLE audit_log (id SERIAL PRIMARY KEY, action TEXT)")
         connection.createStatement().execute(
             """
@@ -639,8 +476,8 @@ class PostgresSchemaComparatorTest {
         val procedures = schema.objects.filterIsInstance<PostgresProcedure>().map { it.name }.sorted()
         assertEquals(
             listOf(
-                "public.overloaded_proc(IN action_id integer)",
-                "public.overloaded_proc(IN action_text text)",
+                "public.overloaded_proc(action_id integer)",
+                "public.overloaded_proc(action_text text)",
             ),
             procedures,
         )
@@ -650,19 +487,8 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include rich constraint and index metadata`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
-        connection.createStatement().execute(
-            """
-            CREATE TABLE parent_table (
-                id INTEGER PRIMARY KEY
-            )
-            """.trimIndent(),
-        )
+        val connection = newConnection()
+        connection.createStatement().execute("CREATE TABLE parent_table (id INTEGER PRIMARY KEY)")
         connection.createStatement().execute(
             """
             CREATE TABLE rich_table (
@@ -714,12 +540,7 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should scope extensions and include grants`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute("CREATE SCHEMA ext_schema")
         connection.createStatement().execute("CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA ext_schema")
         connection.createStatement().execute("CREATE TABLE granted_table (id INT)")
@@ -737,12 +558,7 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `fetch schema should include publications subscriptions and fts without leaking secrets`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute("CREATE TABLE replicated_table (id INT PRIMARY KEY, body TEXT)")
         connection.createStatement().execute("CREATE PUBLICATION pub_all FOR TABLE replicated_table")
         connection.createStatement().execute(
@@ -785,12 +601,7 @@ class PostgresSchemaComparatorTest {
             "rm -rf /tmp/driftlocator_ts && install -d -o postgres -g postgres -m 700 /tmp/driftlocator_ts",
         )
 
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
+        val connection = newConnection()
         connection.createStatement().execute("CREATE ROLE app_reader LOGIN")
         connection.createStatement().execute("CREATE TABLESPACE driftlocator_ts LOCATION '/tmp/driftlocator_ts'")
         connection.createStatement().execute(
@@ -922,19 +733,8 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `compare identical schemas should have no differences`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
-        connection.createStatement().execute(
-            """
-            CREATE TABLE test_table (
-                id SERIAL PRIMARY KEY
-            )
-            """.trimIndent(),
-        )
+        val connection = newConnection()
+        connection.createStatement().execute("CREATE TABLE test_table (id SERIAL PRIMARY KEY)")
 
         val schema = PostgresSchemaFetcher.fetchSchema(connection)
         val comparator = PostgresSchemaComparator()
@@ -947,21 +747,10 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `compare different schemas should detect added table`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
-        // Source schema empty
+        val connection = newConnection()
         val source = PostgresSchemaFetcher.fetchSchema(connection)
 
-        // Create a table
-        connection.createStatement().execute(
-            """
-            CREATE TABLE added_table (id INT)
-            """.trimIndent(),
-        )
+        connection.createStatement().execute("CREATE TABLE added_table (id INT)")
         val target = PostgresSchemaFetcher.fetchSchema(connection)
 
         val comparator = PostgresSchemaComparator()
@@ -973,21 +762,10 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `compare different schemas should detect removed table`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
-        // Create a table
-        connection.createStatement().execute(
-            """
-            CREATE TABLE removed_table (id INT)
-            """.trimIndent(),
-        )
+        val connection = newConnection()
+        connection.createStatement().execute("CREATE TABLE removed_table (id INT)")
         val source = PostgresSchemaFetcher.fetchSchema(connection)
 
-        // Drop table
         connection.createStatement().execute("DROP TABLE removed_table")
         val target = PostgresSchemaFetcher.fetchSchema(connection)
 
@@ -1000,26 +778,11 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `compare different schemas should detect modified table`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
-        // Create table with one column
-        connection.createStatement().execute(
-            """
-            CREATE TABLE modified_table (id INT)
-            """.trimIndent(),
-        )
+        val connection = newConnection()
+        connection.createStatement().execute("CREATE TABLE modified_table (id INT)")
         val source = PostgresSchemaFetcher.fetchSchema(connection)
 
-        // Add a column
-        connection.createStatement().execute(
-            """
-            ALTER TABLE modified_table ADD COLUMN name VARCHAR(100)
-            """.trimIndent(),
-        )
+        connection.createStatement().execute("ALTER TABLE modified_table ADD COLUMN name VARCHAR(100)")
         val target = PostgresSchemaFetcher.fetchSchema(connection)
 
         val comparator = PostgresSchemaComparator()
@@ -1039,16 +802,9 @@ class PostgresSchemaComparatorTest {
 
     @Test
     fun `export diff to file`() {
-        val connection =
-            DriverManager.getConnection(
-                postgres.jdbcUrl,
-                postgres.username,
-                postgres.password,
-            )
-        // Create two different schemas
+        val connection = newConnection()
         connection.createStatement().execute("CREATE TABLE table1 (id INT)")
         val source = PostgresSchemaFetcher.fetchSchema(connection)
-        // Drop table1 to make it removed in target
         connection.createStatement().execute("DROP TABLE table1")
         connection.createStatement().execute("CREATE TABLE table2 (name VARCHAR(100))")
         val target = PostgresSchemaFetcher.fetchSchema(connection)
@@ -1056,7 +812,6 @@ class PostgresSchemaComparatorTest {
         val comparator = PostgresSchemaComparator()
         val diff = comparator.compare(source, target)
 
-        // Export to temporary file
         val tempFile = Files.createTempFile("diff", ".txt")
         DiffExporter.exportToFile(diff, tempFile)
 
@@ -1067,7 +822,6 @@ class PostgresSchemaComparatorTest {
         assertTrue(content.contains("Removed Objects"))
         assertTrue(content.contains("table1"))
 
-        // Cleanup
         tempFile.toFile().delete()
         connection.close()
     }
