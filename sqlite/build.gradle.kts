@@ -25,6 +25,17 @@ dependencies {
     testImplementation(libs.bundles.testing)
 }
 
+tasks.register<Test>("runSqliteIntegrationTestInternal") {
+    testClassesDirs = integrationTestSourceSet.output.classesDirs
+    classpath = integrationTestSourceSet.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty("sqliteJdbcVersion", sqliteJdbcVersion)
+    shouldRunAfter(tasks.named("test"))
+    doFirst {
+        logger.lifecycle("Running SQLite integration tests against sqlite-jdbc:$sqliteJdbcVersion")
+    }
+}
+
 val matrixSqliteJdbcVersions =
     providers.gradleProperty("sqliteJdbcVersions")
         .orNull
@@ -42,7 +53,7 @@ val sqliteIntegrationTestMatrixTasks =
             workingDir = rootDir
             commandLine(
                 "./gradlew",
-                ":sqlite:sqliteIntegrationTest",
+                ":sqlite:runSqliteIntegrationTestInternal",
                 "-PsqliteJdbcVersion=$version",
             )
         }

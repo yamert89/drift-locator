@@ -99,3 +99,13 @@ tasks.register<JacocoReport>("jacocoMergedReport") {
         html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/merged"))
     }
 }
+
+tasks.register("databaseIntegrationTestMatrix") {
+    group = "verification"
+    description = "Runs version-matrix integration tests for PostgreSQL, MySQL, and SQLite modules."
+    dependsOn(
+        ":postgresql:postgresqlIntegrationTestMatrix",
+        ":mysql:mysqlIntegrationTestMatrix",
+        ":sqlite:sqliteIntegrationTestMatrix",
+    )
+}
