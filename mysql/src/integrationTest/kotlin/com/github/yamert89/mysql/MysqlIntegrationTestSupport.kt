@@ -16,6 +16,7 @@ internal object MysqlIntegrationTestContainer {
             .withDatabaseName("testdb")
             .withUsername("test")
             .withPassword("test")
+            .withConfigurationOverride("mysql-test-conf")
             .withCommand("--log-bin-trust-function-creators=1")
             .apply { start() }
     }

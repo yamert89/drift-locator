@@ -1,10 +1,12 @@
 # Drift Locator Changelog
 
-## [Unreleased]
+## [1.3.1]
+
+### Added
+- Supported IntelliJ IDEA 2026.2
 
 ### Changed
 - Exported schema reports now include connection identification details so source and target snapshots are easier to distinguish
-
 
 ## [1.3.0]
 

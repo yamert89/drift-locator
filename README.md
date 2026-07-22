@@ -84,6 +84,30 @@ cd drift-locator
 
 # Build all modules
 ./gradlew buildPlugin
+
+# Run PostgreSQL integration tests for a single version
+./gradlew :postgresql:postgresqlIntegrationTest -PpostgresVersion=16
+
+# Run PostgreSQL integration tests for the default version matrix
+./gradlew :postgresql:postgresqlIntegrationTestMatrix
+
+# Run PostgreSQL integration tests for a custom version matrix
+./gradlew :postgresql:postgresqlIntegrationTestMatrix -PpostgresVersions=14,16,18
+
+# Run MySQL integration tests for a single version
+./gradlew :mysql:mysqlIntegrationTest -PmysqlVersion=8.4
+
+# Run MySQL integration tests for the default version matrix (8.0,8.4)
+./gradlew :mysql:mysqlIntegrationTestMatrix
+
+# Run MySQL integration tests for a custom version matrix
+./gradlew :mysql:mysqlIntegrationTestMatrix -PmysqlVersions=8.0,8.4
+
+# Run SQLite integration tests for the default sqlite-jdbc version matrix
+./gradlew :sqlite:sqliteIntegrationTestMatrix
+
+# Run SQLite integration tests for a custom sqlite-jdbc version matrix
+./gradlew :sqlite:sqliteIntegrationTestMatrix -PsqliteJdbcVersions=3.45.3.0,3.50.3.0
 ```
 The artifact will be located at `jetbrains-plugin/build/distributions/`
 

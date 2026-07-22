@@ -2,12 +2,11 @@ plugins {
     kotlin("jvm")
 }
 
-val defaultMysqlVersionMatrix = listOf("8.0", "8.4")
+val defaultMysqlVersionMatrix = listOf("8.0", "8.4", "9.7")
 
 val integrationTestSourceSet =
     sourceSets.create("integrationTest") {
         kotlin.srcDir("src/integrationTest/kotlin")
-        resources.srcDir("src/integrationTest/resources")
         compileClasspath += sourceSets["main"].output + configurations.testRuntimeClasspath.get()
         runtimeClasspath += output + compileClasspath
     }

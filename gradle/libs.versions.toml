@@ -16,7 +16,7 @@ slf4j-simple = "2.0.16"
 
 # Plugins
 changelog = "2.2.1"
-intelliJPlatform = "2.13.1"
+intelliJPlatform = "2.18.1"
 detekt = "1.23.8"
 ktlint = "12.1.0"
 ktlint-tool = "1.7.1"
