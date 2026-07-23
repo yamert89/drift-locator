@@ -448,3 +448,10 @@ private fun buildSignature(name: String, identityArguments: String): String =
     } else {
         "$name($identityArguments)"
     }
+
+internal fun normalizeProcedureIdentityArguments(identityArguments: String): String =
+    identityArguments
+        .split(',')
+        .joinToString(", ") { argument ->
+            argument.trim().replaceFirst(Regex("^IN\\s+", RegexOption.IGNORE_CASE), "")
+        }

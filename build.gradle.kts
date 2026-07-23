@@ -1,4 +1,7 @@
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
+import io.gitlab.arturbosch.detekt.Detekt
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
     alias(libs.plugins.kotlin) apply false
@@ -37,6 +40,16 @@ subprojects {
     configure<JavaPluginExtension> {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    tasks.withType<KotlinJvmCompile>().configureEach {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_21)
+        }
+    }
+
+    tasks.withType<Detekt>().configureEach {
+        jvmTarget = "21"
     }
 
     extensions.configure<DetektExtension> {
@@ -85,4 +98,14 @@ tasks.register<JacocoReport>("jacocoMergedReport") {
         html.required.set(true)
         html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/merged"))
     }
+}
+
+tasks.register("databaseIntegrationTestMatrix") {
+    group = "verification"
+    description = "Runs version-matrix integration tests for PostgreSQL, MySQL, and SQLite modules."
+    dependsOn(
+        ":postgresql:postgresqlIntegrationTestMatrix",
+        ":mysql:mysqlIntegrationTestMatrix",
+        ":sqlite:sqliteIntegrationTestMatrix",
+    )
 }

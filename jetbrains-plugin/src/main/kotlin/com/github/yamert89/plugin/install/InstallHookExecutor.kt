@@ -1,11 +1,9 @@
 package com.github.yamert89.plugin.install
 
 import com.github.yamert89.plugin.install.hooks.ClearPasswordsHook
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 
@@ -24,7 +22,7 @@ import com.intellij.openapi.startup.ProjectActivity
 class InstallHookExecutor : ProjectActivity {
     companion object {
         private val LOG = Logger.getInstance(InstallHookExecutor::class.java)
-        private const val PLUGIN_ID = "com.github.yamert89.drift-locator"
+        private const val PLUGIN_VERSION_RESOURCE = "/plugin-version.txt"
     }
 
     private val hooks = mutableListOf<InstallHook>()
@@ -83,18 +81,20 @@ class InstallHookExecutor : ProjectActivity {
 
     /**
      * Gets the current version of the Drift Locator plugin.
-     * Uses reflection for compatibility with older IDE versions (241-251)
-     * where PluginId.Companion may not be resolved correctly.
+     * The resource is generated from the pluginVersion Gradle property during the build.
      */
-    private fun getCurrentPluginVersion(): String? =
-        try {
-            // Use reflection to avoid NoSuchFieldError for PluginId.Companion in older IDE versions
-            val pluginIdClass = Class.forName("com.intellij.openapi.extensions.PluginId")
-            val getIdMethod = pluginIdClass.getMethod("getId", String::class.java)
-            val pluginId = getIdMethod.invoke(null, PLUGIN_ID)
-            PluginManagerCore.getPlugin(pluginId as PluginId)?.version
-        } catch (e: NoSuchMethodException) {
-            LOG.warn("Failed to get plugin version: ${e.message}")
-            null
+    private fun getCurrentPluginVersion(): String? {
+        val version =
+            InstallHookExecutor::class.java
+                .getResourceAsStream(PLUGIN_VERSION_RESOURCE)
+                ?.bufferedReader()
+                ?.use { it.readText().trim() }
+                ?.takeIf { it.isNotEmpty() }
+
+        if (version == null) {
+            LOG.warn("Plugin version resource not found or empty: $PLUGIN_VERSION_RESOURCE")
         }
+
+        return version
+    }
 }

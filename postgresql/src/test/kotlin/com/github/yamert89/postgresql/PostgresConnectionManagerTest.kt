@@ -8,7 +8,7 @@ import java.sql.SQLException
 /**
  * Unit tests for PostgresConnectionManager.
  * Note: These tests verify exception handling without actual database connections.
- * Full connection tests are in PostgresSchemaComparatorTest with Testcontainers.
+ * Full connection tests are in PostgresSchemaComparatorIntegrationTest with Testcontainers.
  */
 class PostgresConnectionManagerTest {
     @Test

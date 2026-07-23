@@ -1,6 +1,7 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 
 plugins {
     kotlin("jvm")
@@ -11,6 +12,9 @@ plugins {
 
 kotlin {
     jvmToolchain(21)
+    compilerOptions {
+        jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
+    }
 }
 
 repositories {
@@ -45,6 +49,29 @@ dependencies {
     implementation(libs.slf4j.simple)
     testImplementation(libs.bundles.testing)
     testImplementation(libs.junit4)
+}
+
+val generatedPluginVersionResources = layout.buildDirectory.dir("generated/resources/pluginVersion")
+val generatePluginVersionResource = tasks.register("generatePluginVersionResource") {
+    val pluginVersion = providers.gradleProperty("pluginVersion")
+    val outputFile = generatedPluginVersionResources.map { it.file("plugin-version.txt") }
+
+    description = "Writes the plugin version to a generated resource file."
+    inputs.property("pluginVersion", pluginVersion)
+    outputs.file(outputFile)
+
+    doLast {
+        outputFile.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(pluginVersion.get())
+        }
+    }
+}
+
+sourceSets {
+    main {
+        resources.srcDir(generatedPluginVersionResources)
+    }
 }
 
 // Define plugin description provider once and reuse it
@@ -114,6 +141,10 @@ changelog {
 }
 
 tasks {
+    processResources {
+        dependsOn(generatePluginVersionResource)
+    }
+
     patchPluginXml {
         sinceBuild.set(providers.gradleProperty("pluginSinceBuild"))
         untilBuild.set(providers.gradleProperty("pluginUntilBuild"))

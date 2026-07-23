@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 
 /**
  * Unit tests for PostgresConnectionTester.
- * Note: Full connection tests with actual PostgreSQL are in PostgresSchemaComparatorTest with Testcontainers.
+ * Note: Full connection tests with actual PostgreSQL are in PostgresSchemaComparatorIntegrationTest with Testcontainers.
  */
 class PostgresConnectionTesterTest {
     @Test

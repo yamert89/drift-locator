@@ -1,4 +1,16 @@
 # Drift Locator Changelog
+
+## [1.4.0]
+
+### Added
+- Supported IntelliJ IDEA 2026.2
+
+### Changed
+- Exported schema reports now include connection identification details so source and target snapshots are easier to distinguish
+
+### Fixed
+- PostgreSQL connection validation now rejects schemas that do not exist
+
 ## [1.3.0]
 
 ### Added

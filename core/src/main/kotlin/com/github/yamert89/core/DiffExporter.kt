@@ -17,9 +17,13 @@ object DiffExporter {
         schema: DatabaseSchema,
         scopeName: String? = null,
         scopeLabel: String = "Schema",
+        headerDetails: List<Pair<String, String>> = emptyList(),
     ): String {
         val sb = StringBuilder()
         sb.appendLine("=== Database Schema ===")
+        headerDetails.forEach { (label, value) ->
+            sb.appendLine("$label: $value")
+        }
         if (scopeName != null) {
             sb.appendLine("$scopeLabel: $scopeName")
         }

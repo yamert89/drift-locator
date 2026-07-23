@@ -47,7 +47,7 @@ fun Row.toPostgresProcedure(): PostgresProcedure =
     PostgresProcedure(
         schema = string("schema"),
         pgObjectName = string("procedure_name"),
-        identityArguments = string("identity_arguments"),
+        identityArguments = normalizeProcedureIdentityArguments(string("identity_arguments")),
         arguments = string("arguments"),
         language = string("language"),
         definition = string("definition"),
