@@ -42,7 +42,8 @@ class ConnectionDialogForm(initialData: ConnectionFormData) {
             title = "Select SQLite Database"
             description = "Choose an existing SQLite database file"
         }
-            //.withExtensionFilter("DB", "db") //todo up minimal version to 2024.3 for this line
+
+    // .withExtensionFilter("DB", "db") //todo up minimal version to 2024.3 for this line
     private val filePathField =
         TextFieldWithBrowseButton().apply {
             text = initialData.filePath

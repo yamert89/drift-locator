@@ -53,6 +53,7 @@ object DatabaseAdapters {
                     connection.database,
                     connection.username,
                     connection.password,
+                    connection.schema,
                 )
 
             override fun getConnection(connection: DatabaseConnection): Connection =
