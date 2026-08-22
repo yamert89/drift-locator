@@ -2,8 +2,8 @@ plugins {
     kotlin("jvm")
 }
 
-val defaultSqliteJdbcVersion = "3.50.3.0"
-val defaultSqliteJdbcVersionMatrix = listOf("3.45.3.0", "3.50.3.0")
+val defaultSqliteJdbcVersion = "3.53.2.1"
+val defaultSqliteJdbcVersionMatrix = listOf("3.45.3.0", "3.50.3.0", "3.53.2.1")
 val sqliteJdbcVersion = providers.gradleProperty("sqliteJdbcVersion").orElse(defaultSqliteJdbcVersion).get()
 
 val integrationTestSourceSet =
@@ -51,6 +51,7 @@ val sqliteIntegrationTestMatrixTasks =
             group = "verification"
             description = "Runs SQLite integration tests against sqlite-jdbc $version."
             workingDir = rootDir
+            environment("JAVA_HOME", providers.systemProperty("java.home").get())
             commandLine(
                 "./gradlew",
                 ":sqlite:runSqliteIntegrationTestInternal",
