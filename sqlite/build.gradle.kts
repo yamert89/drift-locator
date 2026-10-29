@@ -3,7 +3,7 @@ plugins {
 }
 
 val defaultSqliteJdbcVersion = "3.53.2.1"
-val defaultSqliteJdbcVersionMatrix = listOf("3.45.3.0", "3.50.3.0", "3.53.2.1")
+val defaultSqliteJdbcVersionMatrix = listOf("3.45.3.0", "3.50.3.0", "3.53.2.1", "3.54.1.0")
 val sqliteJdbcVersion = providers.gradleProperty("sqliteJdbcVersion").orElse(defaultSqliteJdbcVersion).get()
 
 val integrationTestSourceSet =

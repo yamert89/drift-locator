@@ -1,4 +1,6 @@
 # Drift Locator Changelog
+## [1.4.1]
+- Supported IDEA 2026.3+
 
 ## [1.4.0]
 
